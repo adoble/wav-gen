@@ -10,10 +10,16 @@ use wav::{Header};
 
 
 fn main() {
+    // File name
+    let file_name = "sine_500.wav";
+    
+    // Volume
+    let vol = 10000.;  // seems to be loud enough
 
     // Generate sine wave data for 5 secs
     let duration = 5; // 5 seconds
     let sampling_rate = 44100;
+    //let frequency = 500; // 500 Herz
     let frequency = 500; // 500 Herz
 
     let mut data = Vec::<i16>::new();
@@ -28,7 +34,7 @@ fn main() {
     // radions = t * 2pi * f * duration / n_samples
 
         let r = (t as f32 * 2. * PI * frequency as f32 * duration as f32) / n_samples as f32;
-        let amplitude = (r.sin() * 10000.) as i16;
+        let amplitude = (r.sin() * vol) as i16;
 
         // Data consists  of left channnel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
@@ -42,7 +48,7 @@ fn main() {
     let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
 
 
-    let mut out_file = File::create("sine_500.wav").expect("Unable to create a wav file");
+    let mut out_file = File::create(file_name).expect("Unable to create a wav file");
     wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
 
 
