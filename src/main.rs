@@ -11,19 +11,32 @@ use wav::{Header};
 
 fn main() {
     // File name
-    let file_name = "sine_432.wav";
+    let file_name = "sine_400_800_1600.wav";
     
     // Volume
-    let vol = 10000;  // seems to be loud enough
-
+    let vol = 2000;  
     // Generate sine wave data for 5 secs
     let duration = 5; // 5 seconds
     let sampling_rate = 44100;
-    //let frequency = 500; // 500 Herz
-    let frequency = 432; // 500 Herz
+    let frequency = 400; // Hz
 
     let mut data = Vec::<i16>::new();
+    let mut overlay_data = Vec::<i16>::new();
+
     sine_wave(&mut data, frequency, duration, vol, sampling_rate);
+    sine_wave(&mut overlay_data, 800, duration, vol, sampling_rate);
+
+    // Add the two together with the result in data
+    for i in 0..data.len() {
+        data[i] = data[i] + overlay_data[i];
+    }
+
+    sine_wave(&mut overlay_data, 1600, duration, 600, sampling_rate);
+    for i in 0..data.len() {
+        data[i] = data[i] + overlay_data[i];
+    }
+
+
 
     println!("Number of samples {}", data.len());
 
