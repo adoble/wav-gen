@@ -23,23 +23,45 @@ struct Cli {
 enum Commands {
     /// Generate a sine wave
     Sine {
-        /// Frequency of the sine wave in Hertz
+        /// Frequency of the sine wave in hertz (default is 432 hertz)
         #[clap(short, long, action)]
         frequency: Option<u32>,
 
-        /// Duration of the generated sine wave in seconds
+        /// Duration of the generated sine wave in seconds (default is 5 seconds) 
         #[clap(short, long, action)]
         duration: Option<u32>,
 
-        /// Volume of the generated sine wave from 0 to 65 535 
+        /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
         #[clap(short, long, action)]
         volume: Option<u16>,
         
         /// Name of the output wave file
-        #[clap(value_parser)]
+        #[clap(default_value_t = String::from("sine.wav"), value_parser)]
         out_file_name: String,
         
     },
+    /// Generate a wave that sweeps from one frequency to another over the duration
+    Sweep {
+        /// Name of the output wave file
+        #[clap(default_value_t = String::from("sweep.wav"),value_parser)]
+        out_file_name: String,
+        
+        /// The starting freqency in hertz
+        #[clap(short, long, action)]
+        start: u32,
+
+        /// The finishing freqency in hertz
+        #[clap(short, long, action)]
+        finish: u32,
+
+        /// Duration of the generated wave in seconds
+        #[clap(short, long, action)]
+        duration: Option<u32>,
+
+        /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
+        #[clap(short, long, action)]
+        volume: Option<u16>,
+    }
 }
 
 fn main() {
@@ -58,6 +80,7 @@ fn main() {
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
             println!("Finished writing to {}", out_path.display());
         },
+        Commands::Sweep {out_file_name: _, start: _, finish: _, duration: _, volume: _} => println!("Sweep is not yet implemented"),
         
     }
 
