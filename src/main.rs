@@ -1,56 +1,70 @@
 // Wav format see http://soundfile.sapp.org/doc/WaveFormat/
 
 use std::fs::File;
+use std::path::Path;
 use std::f32::consts::PI;
 //use std::io::prelude::*;
 
 use wav::{Header};
 
+use clap::{Parser, Subcommand};
 
 
-
-fn main() {
-    // File name
-    let file_name = "sine_400_800_1600.wav";
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
     
-    // Volume
-    let vol = 2000;  
-    // Generate sine wave data for 5 secs
-    let duration = 5; // 5 seconds
-    let sampling_rate = 44100;
-    let frequency = 400; // Hz
 
-    let mut data = Vec::<i16>::new();
-    let mut overlay_data = Vec::<i16>::new();
-
-    sine_wave(&mut data, frequency, duration, vol, sampling_rate);
-    sine_wave(&mut overlay_data, 800, duration, vol, sampling_rate);
-
-    // Add the two together with the result in data
-    for i in 0..data.len() {
-        data[i] = data[i] + overlay_data[i];
-    }
-
-    sine_wave(&mut overlay_data, 1600, duration, 600, sampling_rate);
-    for i in 0..data.len() {
-        data[i] = data[i] + overlay_data[i];
-    }
-
-
-
-    println!("Number of samples {}", data.len());
-
-    let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
-
-
-    let mut out_file = File::create(file_name).expect("Unable to create a wav file");
-    wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
-
-
-    println!("Finished writing");
+    #[clap(subcommand)]
+    command: Commands,
 }
 
-fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u32, sampling_rate: u32) {
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate a sine wave
+    Sine {
+        /// Frequency of the sine wave in Hertz
+        #[clap(short, long, action)]
+        frequency: Option<u32>,
+
+        /// Duration of the generated sine wave in seconds
+        #[clap(short, long, action)]
+        duration: Option<u32>,
+
+        /// Volume of the generated sine wave from 0 to 65 535 
+        #[clap(short, long, action)]
+        volume: Option<u16>,
+        
+        /// Name of the output wave file
+        #[clap(value_parser)]
+        out_file_name: String,
+        
+    },
+}
+
+fn main() {
+
+    let cli = Cli::parse();
+
+    let sampling_rate = 44100;  // DEFAULT
+
+    match cli.command {
+        Commands::Sine { frequency, duration, volume, out_file_name } => {
+            let mut data = Vec::<i16>::new();
+            sine_wave(&mut data, frequency.unwrap_or(432), duration.unwrap_or(5), volume.unwrap_or(2000), sampling_rate);
+            let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
+            let out_path = Path::new(&out_file_name);
+            let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
+            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
+            println!("Finished writing to {}", out_path.display());
+        },
+        
+    }
+
+    
+}
+
+fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sampling_rate: u32) {
 
     let n_samples = sampling_rate * duration;
     for t in 0..n_samples {
