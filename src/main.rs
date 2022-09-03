@@ -9,7 +9,6 @@ use wav::{Header};
 
 use clap::{Parser, Subcommand};
 
-
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)] // Read from `Cargo.toml`
 struct Cli {
@@ -80,7 +79,17 @@ fn main() {
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
             println!("Finished writing to {}", out_path.display());
         },
-        Commands::Sweep {out_file_name: _, start: _, finish: _, duration: _, volume: _} => println!("Sweep is not yet implemented"),
+        Commands::Sweep {out_file_name, start, finish, duration, volume} => {
+            let mut data = Vec::<i16>::new();
+
+            sweep_wave(&mut data, start, finish, duration.unwrap_or(5), volume.unwrap_or(2000), sampling_rate);
+
+            let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
+            let out_path = Path::new(&out_file_name);
+            let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
+            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
+            println!("Finished writing to {}", out_path.display());
+        },
         
     }
 
@@ -110,3 +119,26 @@ fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sa
     }
 
 }
+
+fn sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volume: u16, sampling_rate: u32) {
+    let n_samples = sampling_rate * duration;
+
+    let frequency_increment: f32 = (finish as f32 - start as f32) / n_samples as f32;
+    let mut sweep_frequency: f32 = start as f32;
+
+    for t in 0..n_samples {
+        let r = (t as f32 * 2. * PI * sweep_frequency * duration as f32) / n_samples as f32;
+        let amplitude = (r.sin() * volume as f32) as i16;
+
+        // Data consists  of left channnel followed by right channel sample. As we are generating stereo
+        // with both left and right channel being the same, two identical samples are written each time.
+        data.push(amplitude );
+        data.push(amplitude );
+
+        // Adjust the fruquency for the next iteration
+        sweep_frequency = sweep_frequency + frequency_increment;
+    }
+
+    
+}
+            
