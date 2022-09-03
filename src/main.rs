@@ -22,17 +22,17 @@ struct Cli {
 enum Commands {
     /// Generate a sine wave
     Sine {
-        /// Frequency of the sine wave in hertz (default is 432 hertz)
-        #[clap(short, long, value_parser)]
-        frequency: Option<u32>,
+        /// Frequency of the sine wave in hertz
+        #[clap(short, long, value_parser, default_value="432")]
+        frequency: u32,
 
-        /// Duration of the generated sine wave in seconds (default is 5 seconds) 
-        #[clap(short, long, value_parser)]
-        duration: Option<u32>,
+        /// Duration of the generated sine wave in seconds 
+        #[clap(short, long, value_parser, default_value="5")]
+        duration: u32,
 
-        /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
-        #[clap(short, long, value_parser)]
-        volume: Option<u16>,
+        /// Volume of the generated sine wave from 0 to 65 535 
+        #[clap(short, long, value_parser, default_value="1000")]
+        volume: u16,
         
         /// Name of the output wave file
         #[clap(default_value_t = String::from("sine.wav"), value_parser)]
@@ -46,20 +46,20 @@ enum Commands {
         out_file_name: String,
         
         /// The starting freqency in hertz
-        #[clap(short, long, value_parser)]
+        #[clap(short, long, value_parser, default_value = "100")]
         start: u32,
 
         /// The finishing freqency in hertz
-        #[clap(short, long, value_parser)]
+        #[clap(short, long, value_parser, default_value = "2000")]
         finish: u32,
 
         /// Duration of the generated wave in seconds
-        #[clap(short, long, value_parser)]
-        duration: Option<u32>,
+        #[clap(short, long, value_parser, default_value = "5")]
+        duration: u32,
 
-        /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
-        #[clap(short, long, value_parser)]
-        volume: Option<u16>,
+        /// Volume of the generated sine wave from 0 to 65 535 
+        #[clap(short, long, value_parser, default_value = "1000")]
+        volume: u16,
     }
 }
 
@@ -72,7 +72,7 @@ fn main() {
     match cli.command {
         Commands::Sine { frequency, duration, volume, out_file_name } => {
             let mut data = Vec::<i16>::new();
-            sine_wave(&mut data, frequency.unwrap_or(432), duration.unwrap_or(5), volume.unwrap_or(2000), sampling_rate);
+            sine_wave(&mut data, frequency, duration , volume, sampling_rate);
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
             let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
@@ -82,7 +82,7 @@ fn main() {
         Commands::Sweep {out_file_name, start, finish, duration, volume} => {
             let mut data = Vec::<i16>::new();
 
-            sweep_wave(&mut data, start, finish, duration.unwrap_or(5), volume.unwrap_or(2000), sampling_rate);
+            sweep_wave(&mut data, start, finish, duration, volume, sampling_rate);
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
