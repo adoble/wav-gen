@@ -23,15 +23,15 @@ enum Commands {
     /// Generate a sine wave
     Sine {
         /// Frequency of the sine wave in hertz (default is 432 hertz)
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         frequency: Option<u32>,
 
         /// Duration of the generated sine wave in seconds (default is 5 seconds) 
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         duration: Option<u32>,
 
         /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         volume: Option<u16>,
         
         /// Name of the output wave file
@@ -46,19 +46,19 @@ enum Commands {
         out_file_name: String,
         
         /// The starting freqency in hertz
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         start: u32,
 
         /// The finishing freqency in hertz
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         finish: u32,
 
         /// Duration of the generated wave in seconds
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         duration: Option<u32>,
 
         /// Volume of the generated sine wave from 0 to 65 535 (default is 1000)
-        #[clap(short, long, action)]
+        #[clap(short, long, value_parser)]
         volume: Option<u16>,
     }
 }
