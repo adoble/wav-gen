@@ -1,7 +1,5 @@
 # wav-gen
 
-## wav-gen
-
 ### Introduction
 
 A utility program to generate wave forms as a `wav` file.
