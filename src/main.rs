@@ -1,4 +1,37 @@
-// Wav format see http://soundfile.sapp.org/doc/WaveFormat/
+//! # wav-gen
+//! 
+//! ## Introduction
+//! 
+//! A utility program to generate wave forms as a `wav` file.
+//! 
+//! 
+//! ## Example Usage 
+//! 
+//! To generate a **sine wave** with:
+//! - a frequency of 643 hertz
+//! - a duration of 3 seconds
+//! - an output wav file `sine.wav`
+//!  
+//! 
+//! ```console
+//!  wav-gen sine --frequency 643 --duration 3 sine.wav
+//! ```
+//! To generate a sine wave that:
+//! - **sweeps** between the frequencies of 300 hertz and 1000 hertz
+//! - has a duration of 5 seconds
+//! - is in the wav file `sweep.wav`
+//! 
+//! ```console
+//! wav-gen sweep --start 300  --finish 1000 --duration 5 sweep.wav
+//! ```
+//! 
+//! For more options use: 
+//! 
+//! ```console
+//! wav-gen help
+//! ```
+
+//  Wav format see http://soundfile.sapp.org/doc/WaveFormat/
 
 use std::fs::File;
 use std::path::Path;
@@ -9,15 +42,15 @@ use wav::{Header};
 
 use clap::{Parser, Subcommand};
 
+/// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)] // Read from `Cargo.toml`
 struct Cli {
-    
-
     #[clap(subcommand)]
     command: Commands,
 }
 
+/// Structure used by the `clap` to process the subcommands
 #[derive(Subcommand)]
 enum Commands {
     /// Generate a sine wave
@@ -63,6 +96,7 @@ enum Commands {
     }
 }
 
+/// Generate wav files from the command line arguments provided.
 fn main() {
 
     let cli = Cli::parse();
@@ -96,6 +130,15 @@ fn main() {
     
 }
 
+/// Generate a sine wave as a set of `i16` samples. 
+/// 
+/// # Arguments
+/// * `data` - A `Vec` of `i16` samples of the generated sine wave
+/// * `frequency`- The frequency of the sine wave in hertz
+/// * `duration`- The duration of the generated waveform in seconds
+/// * `volume`- The volume of the generated sine wave
+/// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz. 
+///                    The `sample_rate` and the `duration` determine the the size of `data`  
 fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sampling_rate: u32) {
 
     let n_samples = sampling_rate * duration;
@@ -120,6 +163,16 @@ fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sa
 
 }
 
+/// Generate a sweeping sine wave as a set of `i16` samples. 
+/// 
+/// # Arguments
+/// * `data` - A `Vec` of i16 samples of the generated sweeping sine wave
+/// * `start` - The start frequency of sweep in hertz
+/// * `finish`- The finishing frequency of the sweep in hertz
+/// * `duration`- The duration of the generated waveform in seconds
+/// * `volume`- The volume of the generated wave
+/// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz. 
+///                    The `sample_rate` and the `duration` determine the the size of `data`  
 fn sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volume: u16, sampling_rate: u32) {
     let n_samples = sampling_rate * duration;
 
