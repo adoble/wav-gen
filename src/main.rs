@@ -33,8 +33,11 @@
 
 use std::fs::File;
 use std::path::Path;
+use std::error::Error;
 use std::f32::consts::PI;
 //use std::io::prelude::*;
+use serde::Deserialize;
+
 
 use wav::{Header};
 
@@ -92,6 +95,12 @@ enum Commands {
         #[clap(short, long, value_parser, default_value = "1000")]
         volume: u16,
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct Harmonic {
+    frequency: f64,   // In hertz
+    amplitude: f64,   
 }
 
 /// Generate wav files from the command line arguments provided.
@@ -193,3 +202,64 @@ fn sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volum
     
 }
             
+fn _multiple_frequencies() {
+
+    // OLD CODE
+    // let mut data = Vec::<i16>::new();
+    // let mut overlay_data = Vec::<i16>::new();
+
+    // sine_wave(&mut data, frequency, duration, vol, sampling_rate);
+    // sine_wave(&mut overlay_data, 800, duration, vol, sampling_rate);
+
+    // // Add the two together with the result in data
+    // for i in 0..data.len() {
+    //     data[i] = data[i] + overlay_data[i];
+    // }
+
+    // sine_wave(&mut overlay_data, 1600, duration, 600, sampling_rate);
+    // for i in 0..data.len() {
+    //     data[i] = data[i] + overlay_data[i];
+    // }
+}
+
+fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
+//fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  Error> {
+    
+
+    let mut rdr = csv::Reader::from_path(harmonics_path)?;
+    let mut iter = rdr.deserialize();
+    let mut harmonics = Vec::<Harmonic>::new();
+
+    while let Some(result) = iter.next() {
+        let harmonic: Harmonic = result?;
+
+        println!("{:?}", harmonic);
+
+        harmonics.push(harmonic);
+
+    } 
+    
+    Ok(harmonics)
+    
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    #[test]
+    fn test_read() {
+        let path : &Path = Path::new("HARMONICS.csv"); 
+        match read_harmonics(&path) {
+            Ok(v) => v.iter().for_each(| h | println!("{},{}", h.frequency, h.amplitude)),
+            Err(e) => println!("Cannot read harmonics file: {}", e),
+
+        }
+        
+    }
+
+    
+}
