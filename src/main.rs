@@ -34,9 +34,10 @@
 use std::fs::File;
 use std::path::Path;
 use std::error::Error;
+use std::fmt;
 use std::f32::consts::PI;
 //use std::io::prelude::*;
-use serde::Deserialize;
+
 
 
 use wav::{Header};
@@ -97,7 +98,7 @@ enum Commands {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 struct Harmonic {
     frequency: f64,   // In hertz
     amplitude: f64,   
@@ -222,20 +223,37 @@ fn _multiple_frequencies() {
     // }
 }
 
+#[derive(Debug)]
+struct HarmonicReadError;
+
+impl fmt::Display for HarmonicReadError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Error in harmonics file")
+  }
+}
+
+impl std::error::Error for HarmonicReadError {}
+
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
-//fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  Error> {
+//fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  HarmonicReadError> {
     
 
     let mut rdr = csv::Reader::from_path(harmonics_path)?;
-    let mut iter = rdr.deserialize();
     let mut harmonics = Vec::<Harmonic>::new();
 
-    while let Some(result) = iter.next() {
-        let harmonic: Harmonic = result?;
+    let mut line_number = 1; // Ignore header
 
-        println!("{:?}", harmonic);
+    for result in rdr.records() {
+        //let record = result?;  
+        let record = result?;  
 
-        harmonics.push(harmonic);
+            
+        let f: f64 = record.get(0).ok_or(HarmonicReadError{})?.trim().parse()?;
+        let a: f64 = record.get(1).ok_or(HarmonicReadError{})?.trim().parse()?;
+        
+    
+        harmonics.push(Harmonic {frequency: f, amplitude: a});
+        line_number += 1;
 
     } 
     
