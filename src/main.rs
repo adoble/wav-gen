@@ -95,6 +95,16 @@ enum Commands {
         /// Volume of the generated sine wave from 0 to 65 535 
         #[clap(short, long, value_parser, default_value = "1000")]
         volume: u16,
+    },
+    /// Generate a wave that contains the harmonics specified in a external csv file.
+    Harmonics {
+        /// Name of the output wave file
+        #[clap(default_value_t = String::from("harmonics.wav"),value_parser)]
+        out_file_name: String,
+
+        /// Name of the csv file containing the harmonics
+        #[clap(short = 'm', long, default_value_t = String::from("harmonics.csv"),value_parser)] 
+        harmonics: String,
     }
 }
 
@@ -132,6 +142,9 @@ fn main() {
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
             println!("Finished writing to {}", out_path.display());
         },
+        Commands::Harmonics { out_file_name , harmonics } => {
+            println!("Not implemented");
+        }
         
     }
 
@@ -232,6 +245,7 @@ impl fmt::Display for HarmonicReadError {
   }
 }
 
+// Required for the ? operator 
 impl std::error::Error for HarmonicReadError {}
 
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
@@ -247,7 +261,6 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
         //let record = result?;  
         let record = result?;  
 
-            
         let f: f64 = record.get(0).ok_or(HarmonicReadError{})?.trim().parse()?;
         let a: f64 = record.get(1).ok_or(HarmonicReadError{})?.trim().parse()?;
         
