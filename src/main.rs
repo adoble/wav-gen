@@ -322,7 +322,7 @@ fn gen_harmonics(
 // Error handling
 // TODO move to another file
 
-#[derive(Debug)]
+
 enum WavGenError {
     ReadError(PathBuf),
     WriteError(PathBuf),
@@ -346,32 +346,16 @@ impl fmt::Display for WavGenError {
     }
 }
 
-// #[derive(Debug)]
-// struct WavGenError {
-//     line_number: usize,
-//     path: PathBuf,
-//     err: WavGenErrorType,
-// }
+// Using the display implmentation for the debug implementation means that 
+// user friendly messages are shown when the main funtion exists with 
+// an error
+impl std::fmt::Debug for WavGenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <WavGenError as fmt::Display>::fmt(self, f)
+    }
+}
 
-// impl fmt::Display for WavGenError {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self.err {
-//             WavGenErrorType::ReadError => {
-//                 f.write_fmt(format_args!("Could not read file {:?}", self.path))
-//             }
-//             WavGenErrorType::WriteError => {
-//                 f.write_fmt(format_args!("Could not write file {:?}", self.path))
-//             }
-//             WavGenErrorType::HarmonicParseError => f.write_fmt(format_args!(
-//                 "Parse error in harmonic file at line {:?}",
-//                 self.line_number
-//             )),
-//         }
-//     }
-// }
 
-// Required for the ? operator
-//impl std::error::Error for WavGenError {}
 
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
     //fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  HarmonicReadError> {
