@@ -1,6 +1,6 @@
 [package]
 name = "wav-gen"
-version = "0.1.0"
+version = "0.1.1"
 description = "Generates a sound file using the wav format"
 authors = ["Andrew Doble"]
 edition = "2021"

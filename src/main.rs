@@ -137,8 +137,10 @@ fn main() -> Result<(), WavGenError> {
             let data = gen_sine_wave(frequency, duration, volume, sampling_rate);
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path).map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
+            let mut out_file = File::create(out_path)
+                .map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
+            
+                wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
 
             println!("Finished writing to {}", out_path.display());
@@ -154,7 +156,7 @@ fn main() -> Result<(), WavGenError> {
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
+            let mut out_file = File::create(out_path).map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
             println!("Finished writing to {}", out_path.display());
@@ -167,16 +169,16 @@ fn main() -> Result<(), WavGenError> {
         } => {
             let p = Path::new(&harmonics);
 
-            let mut harmonics_set = read_harmonics(p).expect("Error in reading harmonics file");
+            let mut harmonics_set = read_harmonics(p).map_err(|_| WavGenError::ReadError(p.to_path_buf()))?;
 
             normalise_harmonics(&mut harmonics_set);
 
-            let mut data = Vec::<i16>::new();
-            gen_harmonics(&mut data, &harmonics_set, duration, volume, sampling_rate);
+            let data = gen_harmonics(&harmonics_set, duration, volume, sampling_rate)?;
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
+            let mut out_file = File::create(out_path).map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
+            
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
             println!("Finished writing to {}", out_path.display());
@@ -193,12 +195,7 @@ fn main() -> Result<(), WavGenError> {
 /// * `volume`- The volume of the generated sine wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
-fn gen_sine_wave(
-    frequency: u32,
-    duration: u32,
-    volume: u16,
-    sampling_rate: u32,
-) -> Vec<i16> {
+fn gen_sine_wave(frequency: u32, duration: u32, volume: u16, sampling_rate: u32) -> Vec<i16> {
     let n_samples = sampling_rate * duration;
 
     let mut data = Vec::<i16>::new();
@@ -240,7 +237,6 @@ fn gen_sweep_wave(
     volume: u16,
     sampling_rate: u32,
 ) -> Vec<i16> {
-
     let mut data = Vec::<i16>::new();
     let n_samples = sampling_rate * duration;
 
@@ -265,68 +261,49 @@ fn gen_sweep_wave(
 
 #[allow(unused_variables)]
 fn gen_harmonics(
-    data: &mut Vec<i16>,
     harmonics_set: &Vec<Harmonic>,
     duration: u32,
     volume: u16,
     sampling_rate: u32,
-) {
-    println!("Not implemented!");
-    println!(
-        "Duration = {}, volume = {}, sample_rate = {}",
-        duration, volume, sampling_rate
-    );
-    println!("Harmonics: {:?}", harmonics_set);
+) -> Result<Vec<i16>, WavGenError> {
 
-    todo!();
+    // Generate a intial set of data
+    if let Some(h) = harmonics_set.first() {
+        let mut data = gen_sine_wave(
+            h.frequency as u32,
+            duration,
+            (h.amplitude * volume as f32) as u16,
+            sampling_rate,
+        );
+        // Overlay the other harmonics
+        for harmonic_index in 1..harmonics_set.len() {
+            let overlay_data = gen_sine_wave(
+                harmonics_set[harmonic_index].frequency as u32,
+                duration,
+                (harmonics_set[harmonic_index].amplitude * volume as f32) as u16,
+                sampling_rate,
+            );
 
-    // EXPERIMENTAL CODE - not finished
-    // assert!(harmonics_set.len() > 0);
-
-    // if let Some(h) = harmonics_set.first() {
-    //     // Generate a intial set of data....
-    // }
-
-    // let mut h = harmonics_set.first().unwrap();
-    // gen_sine_wave(&mut data, h.frequency as u32, duration, (h.amplitude * volume as f32) as u16, sampling_rate);
-
-    // let mut overlay_data = Vec::<i16>::new();
-    // for j in 1..harmonics_set.len() {
-
-    //     gen_sine_wave(&mut overlay_data, harmonics_set[j].frequency as u32, duration, (harmonics_set[j].amplitude * volume as f32) as u16, sampling_rate);
-
-    //     for i in 0..data.len() {
-    //         data[i] = data[i] + overlay_data[i];
-    //     }
-
-    // }
-
-    // OLD CODE
-    // let mut data = Vec::<i16>::new();
-    // let mut overlay_data = Vec::<i16>::new();
-
-    // sine_wave(&mut data, frequency, duration, vol, sampling_rate);
-    // sine_wave(&mut overlay_data, 800, duration, vol, sampling_rate);
-
-    // // Add the two together with the result in data
-    // for i in 0..data.len() {
-    //     data[i] = data[i] + overlay_data[i];
-    // }
-
-    // sine_wave(&mut overlay_data, 1600, duration, 600, sampling_rate);
-    // for i in 0..data.len() {
-    //     data[i] = data[i] + overlay_data[i];
-    // }
+            for i in 0..data.len() {
+                data[i] = data[i] + overlay_data[i];
+            }
+        }
+        return Ok(data)
+    } else {
+        return Err(WavGenError::NoHarmonics);
+    }
+    
 }
 
 // Error handling
 // TODO move to another file
 
-
 enum WavGenError {
     ReadError(PathBuf),
     WriteError(PathBuf),
+    CreateError(PathBuf),
     HarmonicParseError(usize),
+    NoHarmonics,
 }
 
 //Required for the ? operator
@@ -338,24 +315,24 @@ impl fmt::Display for WavGenError {
         match self {
             WavGenError::ReadError(p) => f.write_fmt(format_args!("could not read file {:?}", p)),
             WavGenError::WriteError(p) => f.write_fmt(format_args!("could not write file {:?}", p)),
+            WavGenError::CreateError(p) => f.write_fmt(format_args!("unable to create file {:?}", p)),
             WavGenError::HarmonicParseError(line_number) => f.write_fmt(format_args!(
                 "parse error in harmonic file at line {:?}",
                 line_number
             )),
+            WavGenError::NoHarmonics => f.write_fmt(format_args!("no harmonics found")),
         }
     }
 }
 
-// Using the display implmentation for the debug implementation means that 
-// user friendly messages are shown when the main funtion exists with 
+// Using the display implmentation for the debug implementation means that
+// user friendly messages are shown when the main funtion exists with
 // an error
 impl std::fmt::Debug for WavGenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <WavGenError as fmt::Display>::fmt(self, f)
     }
 }
-
-
 
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
     //fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  HarmonicReadError> {
