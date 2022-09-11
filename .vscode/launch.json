@@ -20,7 +20,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["harmonics", "../../sounds/harmonics.wav", "-m", "../../sounds/harmonics.csv"],
             "cwd": "${workspaceFolder}"
         },
         {

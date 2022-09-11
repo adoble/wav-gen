@@ -105,17 +105,27 @@ enum Commands {
         /// Name of the csv file containing the harmonics
         #[clap(short = 'm', long, default_value_t = String::from("harmonics.csv"),value_parser)] 
         harmonics: String,
+
+         /// Duration of the generated wave in seconds
+         #[clap(short, long, value_parser, default_value = "5")]
+         duration: u32,
+ 
+
+        /// Volume of the generated sine wave from 0 to 65 535 
+        #[clap(short, long, value_parser, default_value="1000")]
+        volume: u16,
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Harmonic {
-    frequency: f64,   // In hertz
-    amplitude: f64,   
+    frequency: f32,   // In hertz
+    amplitude: f32,   
 }
 
 /// Generate wav files from the command line arguments provided.
-fn main() {
+fn main()  {
 
     let cli = Cli::parse();
 
@@ -124,7 +134,7 @@ fn main() {
     match cli.command {
         Commands::Sine { frequency, duration, volume, out_file_name } => {
             let mut data = Vec::<i16>::new();
-            sine_wave(&mut data, frequency, duration , volume, sampling_rate);
+            gen_sine_wave(&mut data, frequency, duration , volume, sampling_rate);
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
             let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
@@ -134,7 +144,7 @@ fn main() {
         Commands::Sweep {out_file_name, start, finish, duration, volume} => {
             let mut data = Vec::<i16>::new();
 
-            sweep_wave(&mut data, start, finish, duration, volume, sampling_rate);
+            gen_sweep_wave(&mut data, start, finish, duration, volume, sampling_rate);
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
@@ -142,8 +152,21 @@ fn main() {
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
             println!("Finished writing to {}", out_path.display());
         },
-        Commands::Harmonics { out_file_name , harmonics } => {
-            println!("Not implemented");
+        Commands::Harmonics { out_file_name , harmonics, duration, volume } => {
+            let p = Path::new(&harmonics);
+
+            let mut harmonics_set = read_harmonics(p).expect("Error in reading harmonics file");
+
+            normalise_harmonics(&mut harmonics_set);
+
+            let mut data = Vec::<i16>::new();
+            gen_harmonics(&mut data, &harmonics_set, duration, volume, sampling_rate);
+
+            let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
+            let out_path = Path::new(&out_file_name);
+            let mut out_file = File::create(out_path).expect("Unable to create the wav file ");
+            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file).expect("Unable to write to wav file");
+            println!("Finished writing to {}", out_path.display());
         }
         
     }
@@ -160,7 +183,7 @@ fn main() {
 /// * `volume`- The volume of the generated sine wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz. 
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
-fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sampling_rate: u32) {
+fn gen_sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sampling_rate: u32) {
 
     let n_samples = sampling_rate * duration;
     for t in 0..n_samples {
@@ -194,7 +217,7 @@ fn sine_wave(data: &mut Vec<i16>, frequency: u32, duration: u32, volume: u16, sa
 /// * `volume`- The volume of the generated wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz. 
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
-fn sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volume: u16, sampling_rate: u32) {
+fn gen_sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volume: u16, sampling_rate: u32) {
     let n_samples = sampling_rate * duration;
 
     let frequency_increment: f32 = (finish as f32 - start as f32) / n_samples as f32;
@@ -215,8 +238,37 @@ fn sweep_wave(data: &mut Vec<i16>, start: u32, finish: u32, duration: u32, volum
 
     
 }
-            
-fn _multiple_frequencies() {
+
+
+#[allow(unused_variables)]
+fn gen_harmonics(data: &mut Vec<i16>, harmonics_set: &Vec<Harmonic>, duration: u32, volume:u16, sampling_rate: u32) {
+
+    println!("Not implemented!");
+    println!("Duration = {}, volume = {}, sample_rate = {}", duration, volume, sampling_rate);
+    println!("Harmonics: {:?}", harmonics_set);
+
+    todo!();
+
+    // EXPERIMENTAL CODE - not finished
+    // assert!(harmonics_set.len() > 0);
+
+    // if let Some(h) = harmonics_set.first() {
+    //     // Generate a intial set of data....
+    // }
+
+    // let mut h = harmonics_set.first().unwrap();
+    // gen_sine_wave(&mut data, h.frequency as u32, duration, (h.amplitude * volume as f32) as u16, sampling_rate);
+    
+    // let mut overlay_data = Vec::<i16>::new();
+    // for j in 1..harmonics_set.len() {
+   
+    //     gen_sine_wave(&mut overlay_data, harmonics_set[j].frequency as u32, duration, (harmonics_set[j].amplitude * volume as f32) as u16, sampling_rate);
+
+    //     for i in 0..data.len() {
+    //         data[i] = data[i] + overlay_data[i];
+    //     } 
+
+    // }
 
     // OLD CODE
     // let mut data = Vec::<i16>::new();
@@ -255,24 +307,35 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
     let mut rdr = csv::Reader::from_path(harmonics_path)?;
     let mut harmonics = Vec::<Harmonic>::new();
 
-    let mut line_number = 1; // Ignore header
-
+    
     for result in rdr.records() {
         //let record = result?;  
         let record = result?;  
 
-        let f: f64 = record.get(0).ok_or(HarmonicReadError{})?.trim().parse()?;
-        let a: f64 = record.get(1).ok_or(HarmonicReadError{})?.trim().parse()?;
+        let f: f32 = record.get(0).ok_or(HarmonicReadError{})?.trim().parse()?;
+        let a: f32 = record.get(1).ok_or(HarmonicReadError{})?.trim().parse()?;
         
     
         harmonics.push(Harmonic {frequency: f, amplitude: a});
-        line_number += 1;
-
+        
     } 
     
     Ok(harmonics)
     
 
+}
+
+/// Normalise the amplitides of the harmonics so that the sum of them all is 1
+fn normalise_harmonics(harmonics_set: &mut Vec<Harmonic>) {
+    let mut sum = 0.;
+    for h in harmonics_set.iter_mut() {
+        sum += h.amplitude;
+    };
+
+    for h in harmonics_set.iter_mut() {
+        h.amplitude = h.amplitude / sum;
+    }
+ 
 }
 
 #[cfg(test)]
@@ -291,6 +354,20 @@ mod tests {
         }
         
     }
+
+    #[test]
+    fn test_read_harmonics() {
+        
+        let path : &Path = Path::new("../../sounds/harmonics.csv"); 
+        match read_harmonics(&path) {
+            Ok(v) => v.iter().for_each(| h | println!("{},{}", h.frequency, h.amplitude)),
+            Err(e) => println!("Cannot read harmonics file: {}", e),
+
+        }
+        
+    }
+
+    
 
     
 }
