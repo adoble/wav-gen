@@ -11,4 +11,5 @@ edition = "2021"
 clap = { version = "3.2.20", features = ["derive"] }
 wav = "1.0.0"
 csv = "1.1"
+bunt = "0.2"
 #serde = { version = "1.0", features = ["derive"] }

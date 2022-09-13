@@ -82,7 +82,7 @@ use std::f32::consts::PI;
 use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-
+use bunt;
 
 use wav::Header;
 
@@ -212,7 +212,7 @@ fn main() -> Result<(), WavGenError> {
                 wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
 
-            println!("Finished writing to {}", out_path.display());
+            bunt::println!("{$bold+green}Finished{/$} writing to {}", out_path.display());
         }
         Commands::Sweep {
             out_file_name,
@@ -228,7 +228,7 @@ fn main() -> Result<(), WavGenError> {
             let mut out_file = File::create(out_path).map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-            println!("Finished writing to {}", out_path.display());
+            bunt::println!("{$bold+green}Finished{/$} writing to {}", out_path.display());
         }
         Commands::Harmonics {
             out_file_name,
@@ -250,7 +250,7 @@ fn main() -> Result<(), WavGenError> {
             
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-            println!("Finished writing to {}", out_path.display());
+            bunt::println!("{$bold+green}Finished{/$} writing to {}", out_path.display());
         }
     }
     Ok(())
