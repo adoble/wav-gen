@@ -82,15 +82,17 @@ use std::f32::consts::PI;
 use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::process::Output;
 //use std::io::prelude::*;
 
 use wav::Header;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum, ArgGroup};
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)] // Read from `Cargo.toml`
+
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -98,24 +100,37 @@ struct Cli {
 
 /// Structure used by the `clap` to process the subcommands
 #[derive(Subcommand)]
+
 enum Commands {
+    #[clap(group(
+        ArgGroup::new("size").required(true).args(&["duration", "length"]),
+        ))]
     /// Generate a sine wave
     Sine {
         /// Frequency of the sine wave in hertz
         #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
 
-        /// Duration of the generated sine wave in seconds
+        /// Duration of the generated sine wave in seconds. Only used --type wav
         #[clap(short, long, value_parser, default_value = "5")]
         duration: u32,
+
+        // Length of the generated wave in words. Only used with --type rust
+        #[clap(short, long, value_parser)]
+        length: Option<u32>,
 
         /// Volume of the generated sine wave from 0 to 65 535
         #[clap(short, long, value_parser, default_value = "1000")]
         volume: u16,
 
+        /// Output wave type
+        #[clap(short = 't', long = "type", arg_enum, value_parser, default_value_t = OutputType::Wav)] 
+        output_type: OutputType,
+
         /// Name of the output wave file
         #[clap(default_value_t = String::from("sine.wav"), value_parser)]
         out_file_name: String,
+ 
     },
     /// Generate a wave that sweeps from one frequency to another over the duration
     Sweep {
@@ -134,6 +149,7 @@ enum Commands {
         /// Duration of the generated wave in seconds
         #[clap(short, long, value_parser, default_value = "5")]
         duration: u32,
+        
 
         /// Volume of the generated sine wave from 0 to 65 535
         #[clap(short, long, value_parser, default_value = "1000")]
@@ -159,6 +175,12 @@ enum Commands {
     },
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum OutputType {
+    Wav,
+    Rust,
+}
+
 /// Represents an harmonic as a frequency and it's relative amplitude to other harmonics
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -178,6 +200,8 @@ fn main() -> Result<(), WavGenError> {
             frequency,
             duration,
             volume,
+            output_type:_, 
+            length:_,
             out_file_name,
         } => {
             let data = gen_sine_wave(frequency, duration, volume, sampling_rate);
