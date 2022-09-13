@@ -77,6 +77,7 @@
 
 //  Wav format see http://soundfile.sapp.org/doc/WaveFormat/
 
+//use core::num;
 use std::error::Error;
 use std::f32::consts::PI;
 use std::fmt;
@@ -203,13 +204,16 @@ fn main() -> Result<(), WavGenError> {
             length:_,
             out_file_name,
         } => {
-            let data = gen_sine_wave(frequency, duration, volume, sampling_rate);
+            let n_samples = duration * sampling_rate;
+            println!("number samples: {}", n_samples);
+            let data = gen_sine_wave(frequency, n_samples, volume, sampling_rate);
+
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
             let mut out_file = File::create(out_path)
                 .map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
             
-                wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
+            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
 
             bunt::println!("{$bold+green}Finished{/$} writing to {}", out_path.display());
@@ -221,7 +225,9 @@ fn main() -> Result<(), WavGenError> {
             duration,
             volume,
         } => {
-            let data = gen_sweep_wave(start, finish, duration, volume, sampling_rate);
+            let n_samples = duration * sampling_rate;
+            let data = gen_sweep_wave(start, finish, n_samples, volume, sampling_rate);
+            //let data = gen_sweep_wave(start, finish, duration, volume, sampling_rate);
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
@@ -242,7 +248,10 @@ fn main() -> Result<(), WavGenError> {
 
             normalise_harmonics(&mut harmonics_set);
 
-            let data = gen_harmonics(&harmonics_set, duration, volume, sampling_rate)?;
+            let n_samples = duration * sampling_rate;
+
+            //let data = gen_harmonics(&harmonics_set, duration, volume, sampling_rate)?;
+            let data = gen_harmonics(&harmonics_set, n_samples, volume, sampling_rate)?;
 
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
             let out_path = Path::new(&out_file_name);
@@ -261,25 +270,17 @@ fn main() -> Result<(), WavGenError> {
 /// # Arguments
 /// * `frequency`- The frequency of the sine wave in hertz
 /// * `duration`- The duration of the generated waveform in seconds
+/// * `number_samples` - the number of samples to be generated. 
+///                      The duration of the genertate wave is the `number_samples/sampling_rate`.
 /// * `volume`- The volume of the generated sine wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
-fn gen_sine_wave(frequency: u32, duration: u32, volume: u16, sampling_rate: u32) -> Vec<i16> {
-    let n_samples = sampling_rate * duration;
-
+fn gen_sine_wave(frequency: u32, number_samples: u32, volume: u16, sampling_rate: u32) -> Vec<i16> {
     let mut data = Vec::<i16>::new();
 
-    for t in 0..n_samples {
-        // n_samples / duration = number sample for a second = s_samples
-
-        // P_samples = s_sample / freqency  = samples in one period
-
-        // radians = t * 2pi / p_samples
-
-        // radions = t * 2pi * f * duration / n_samples
-
-        let r = (t as f32 * 2. * PI * frequency as f32 * duration as f32) / n_samples as f32;
-        let amplitude = (r.sin() * volume as f32) as i16;
+    for t in 0..number_samples {
+        let radians = (t as f32 * 2. * PI * frequency as f32) / sampling_rate as f32;
+        let amplitude = (radians.sin() * volume as f32) as i16;
 
         // Data consists  of left channnel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
@@ -290,30 +291,30 @@ fn gen_sine_wave(frequency: u32, duration: u32, volume: u16, sampling_rate: u32)
     data
 }
 
-/// Generate a sweeping sine wave as a set of `i16` samples and retuns it
+/// Generate a sweeping sine wave as a set of `i16` samples and returns it
 ///
 /// # Arguments
 /// * `start` - The start frequency of sweep in hertz
 /// * `finish`- The finishing frequency of the sweep in hertz
-/// * `duration`- The duration of the generated waveform in seconds
+/// * ´number_samples" - the number of samples to be generated. 
+///                      The duration of the genertate wave is the `number_samples/sampling_rate`.
 /// * `volume`- The volume of the generated wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
 fn gen_sweep_wave(
     start: u32,
     finish: u32,
-    duration: u32,
+    number_samples: u32,
     volume: u16,
     sampling_rate: u32,
 ) -> Vec<i16> {
     let mut data = Vec::<i16>::new();
-    let n_samples = sampling_rate * duration;
-
-    let frequency_increment: f32 = (finish as f32 - start as f32) / n_samples as f32;
+    
+    let frequency_increment: f32 = (finish as f32 - start as f32) / number_samples as f32;
     let mut sweep_frequency: f32 = start as f32;
 
-    for t in 0..n_samples {
-        let r = (t as f32 * 2. * PI * sweep_frequency * duration as f32) / n_samples as f32;
+    for t in 0..number_samples {
+        let r = (t as f32 * 2. * PI * sweep_frequency) / sampling_rate as f32 ;
         let amplitude = (r.sin() * volume as f32) as i16;
 
         // Data consists  of left channnel followed by right channel sample. As we are generating stereo
@@ -331,16 +332,16 @@ fn gen_sweep_wave(
 #[allow(unused_variables)]
 fn gen_harmonics(
     harmonics_set: &Vec<Harmonic>,
-    duration: u32,
+    number_samples: u32,
     volume: u16,
     sampling_rate: u32,
 ) -> Result<Vec<i16>, WavGenError> {
 
-    // Generate a intial set of data
+    // Generate a initial set of data
     if let Some(h) = harmonics_set.first() {
         let mut data = gen_sine_wave(
             h.frequency as u32,
-            duration,
+            number_samples,
             (h.amplitude * volume as f32) as u16,
             sampling_rate,
         );
@@ -348,7 +349,7 @@ fn gen_harmonics(
         for harmonic_index in 1..harmonics_set.len() {
             let overlay_data = gen_sine_wave(
                 harmonics_set[harmonic_index].frequency as u32,
-                duration,
+                number_samples,
                 (harmonics_set[harmonic_index].amplitude * volume as f32) as u16,
                 sampling_rate,
             );
