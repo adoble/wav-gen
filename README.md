@@ -1,6 +1,5 @@
 # wav-gen
 
-
 A utility program to generate wave forms as either a `wav` file or a rust array initialisation.
 
 The later can be used for embedded projects where a waveform needs to be generated.
@@ -17,7 +16,7 @@ To generate a **sine wave** with:
 
 
 ```console
- wav-gen sine --frequency 643 --duration 3 sine.wav
+ wav-gen wav sine --frequency 643 --duration 3 sine.wav
 ```
 
 ### Sweeping Sine Wave
@@ -28,7 +27,7 @@ To generate a sine wave that:
 - is in the wav file `sweep.wav`
 
 ```console
-wav-gen sweep --start 300  --finish 1000 --duration 5 sweep.wav
+wav-gen wav sweep --start 300  --finish 1000 --duration 5 sweep.wav
 ```
 ### Harmonics
 
@@ -43,23 +42,23 @@ frequency,amplitude
 This specifies a wave with harmonics at 500Hz, 700Hz and 750Hz with respective amplitudes 0.3, 0.2 and 0.1.
 The amplitudes will be normalised.
 
-Then use (with short forms for options):
+Then use:
 
 ```console
-wav-gen -m harmonics.csv output_wave_file.wav
+wav-gen wav harmonics --infile harmonics.csv output_wave_file.wav
 ```
 ### Rust data arrays
 
-To generate a sine waveform of 500Hz as a rust data array of 1024 words use the following
+To generate a sine waveform of 500Hz as a rust data array of 44140 words use the following
 
 ```console
-wav-gen sine --frequency 500 --type rust --length 1024  wave.rs
+wav-gen rust sine --frequency 500 --length 44100  wave.rs
 ```
 
 The generated rust source code file looks like:
 
 ```rust
-static WAVE: [i16; 1024] = [
+static DATA: [i16; 1024] = [
    // i16 values
 ];
 ```

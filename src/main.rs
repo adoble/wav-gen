@@ -1,22 +1,9 @@
-//!
 //! A utility program to generate wave forms as either a `wav` file or a rust array initialisation.
 //!
 //! The later can be used for embedded projects where a waveform needs to be generated.
 //!
 //!
 //! # Example Usage
-//! 
-//! PROPOSAL:
-//! ```console
-//!  wav-gen wav  sine --frequency 500  ../sine.wav
-//!  wav-gen rust sine  --frequency 400 --length 740000 -name  SINE_DATA ./sine_header.rs
-//!  wav-gen wav  harmonics --harmonic ./harmonics.csv ./wave.wav
-//! ```
-//! Notes:
-//! * This removes some om of the dependency problems with the options.
-//! * Uuse #[clap(global = true, ...)]
-//! * Version update to 0.2.0
-//! 
 //!
 //! ## Sine wave
 //!
@@ -27,7 +14,7 @@
 //!  
 //!
 //! ```console
-//!  wav-gen sine --frequency 643 --duration 3 sine.wav
+//!  wav-gen wav sine --frequency 643 --duration 3 sine.wav
 //! ```
 //!
 //! ## Sweeping Sine Wave
@@ -38,7 +25,7 @@
 //! - is in the wav file `sweep.wav`
 //!
 //! ```console
-//! wav-gen sweep --start 300  --finish 1000 --duration 5 sweep.wav
+//! wav-gen wav sweep --start 300  --finish 1000 --duration 5 sweep.wav
 //! ```
 //! ## Harmonics
 //!
@@ -53,23 +40,23 @@
 //! This specifies a wave with harmonics at 500Hz, 700Hz and 750Hz with respective amplitudes 0.3, 0.2 and 0.1.
 //! The amplitudes will be normalised.
 //!
-//! Then use (with short forms for options):
+//! Then use:
 //!
 //! ```console
-//! wav-gen -m harmonics.csv output_wave_file.wav
+//! wav-gen wav harmonics --infile harmonics.csv output_wave_file.wav
 //! ```
 //! ## Rust data arrays
 //!
-//! To generate a sine waveform of 500Hz as a rust data array of 1024 words use the following
+//! To generate a sine waveform of 500Hz as a rust data array of 44140 words use the following
 //!
 //! ```console
-//! wav-gen sine --frequency 500 --type rust --length 1024  wave.rs
+//! wav-gen rust sine --frequency 500 --length 44100  wave.rs
 //! ```
 //!
 //! The generated rust source code file looks like:
 //!
 //! ```
-//! static WAVE: [i16; 1024] = [
+//! static DATA: [i16; 1024] = [
 //!    // i16 values
 //! ];
 //! ```
@@ -99,94 +86,80 @@ use std::path::{Path, PathBuf};
 
 use wav::Header;
 
-use clap::{CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)] // Read from `Cargo.toml`
 
 struct Cli {
+    /// Name of the output wave file
+    #[clap(global = true, default_value_t = String::from("sine.wav"), value_parser)]
+    out_file_name: String,
+
+    /// Volume of the generated wave from 0 to 65 535
+    #[clap(global = true, short, long, value_parser, default_value = "1000")]
+    volume: u16,
+
     #[clap(subcommand)]
-    command: Commands,
+    command: OutputTypeCommands,
+}
+
+#[derive(Subcommand)]
+enum OutputTypeCommands {
+    Wav(WavOptions),
+    Rust(RustOptions),
+}
+
+#[derive(Args)]
+struct WavOptions {
+    /// Duration of the generated sine wave in seconds.
+    #[clap(global = true, short, long, value_parser, default_value = "5")]
+    duration: u32,
+
+    #[clap(subcommand)]
+    gen_command: GenCommands,
+}
+
+#[derive(Args)]
+struct RustOptions {
+    /// Length of the generated wave in words.
+    #[clap(global = true, short, long, value_parser, default_value = "1024")]
+    length: u32,
+
+    /// Name of the rust data struct generated.
+    #[clap(global = true, short, long, value_parser, default_value = "DATA")]
+    name: String,
+
+    #[clap(subcommand)]
+    gen_command: GenCommands,
 }
 
 // TODO look into global arguments to reduce the length of this. See https://docs.rs/clap/2.34.0/clap/struct.Arg.html#examples-35
 /// Structure used by the `clap` to process the subcommands
 #[derive(Subcommand)]
-enum Commands {
+enum GenCommands {
     /// Generate a sine wave
     Sine {
-        /// Name of the output wave file
-        #[clap(default_value_t = String::from("sine.wav"), value_parser)]  // --> global 
-        out_file_name: String,
-
         /// Frequency of the sine wave in hertz
-        #[clap(short, long, value_parser, default_value = "432")]   // ->  wav, rust   sine
+        #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
-
-        /// Duration of the generated sine wave in seconds. Only used --type wav
-        #[clap(short, long, value_parser, default_value = "5")]  // -> wav     sine, sweep, harmonics
-        duration: u32,
-
-        /// Volume of the generated sine wave from 0 to 65 535
-        #[clap(short, long, value_parser, default_value = "1000")]  // -> global 
-        volume: u16,
-
-        /// Output wave type
-        #[clap(short = 't', long = "type", arg_enum, value_parser, default_value_t = OutputType::Wav)]   // -> global/subcommand
-        output_type: OutputType,   
-
-        /// Length of the generated wave in words. Only used with --type rust
-        #[clap(short, long, value_parser)]   // -> rust      sine, sweep, harmonics
-        length: Option<u32>,  
-
-        /// Name of the rust data struct generated. Only used with --type rust
-        #[clap(short, long, value_parser, default_value = "DATA")]  // -> rust    sine, sweep, harmonics
-        name: String,
     },
     /// Generate a wave that sweeps from one frequency to another over the duration
     Sweep {
-        /// Name of the output wave file
-        #[clap(default_value_t = String::from("sweep.wav"),value_parser)]  // -> global
-        out_file_name: String,
-
         /// The starting freqency in hertz
-        #[clap(short, long, value_parser, default_value = "100")]  //--> wav, rust     sweep
+        #[clap(short, long, value_parser, default_value = "100")]
         start: u32,
 
         /// The finishing freqency in hertz
-        #[clap(short, long, value_parser, default_value = "2000")] //--> wav, rust     sweep
+        #[clap(short, long, value_parser, default_value = "2000")]
         finish: u32,
-
-        /// Duration of the generated wave in seconds
-        #[clap(short, long, value_parser, default_value = "5")] //--> wav sine, sweep, duration
-        duration: u32,
-
-        /// Volume of the generated sine wave from 0 to 65 535
-        #[clap(short, long, value_parser, default_value = "1000")]  // --> global
-        volume: u16,
     },
     /// Generate a wave that contains the harmonics specified in a external csv file.
     Harmonics {
-        /// Name of the output wave file
-        #[clap(default_value_t = String::from("harmonics.wav"),value_parser)]  // -> global
-        out_file_name: String,
-
         /// Name of the csv file containing the harmonics
-        #[clap(short = 'm', long, default_value_t = String::from("harmonics.csv"),value_parser)]  // ->wav, rust   harmonics
-        harmonics: String,
-
-        /// Duration of the generated wave in seconds
-        #[clap(short, long, value_parser, default_value = "5")]  // -> wav 
-        duration: u32,
-
-        /// Volume of the generated sine wave from 0 to 65 535
-        #[clap(short, long, value_parser, default_value = "1000")]  //  global
-        volume: u16,
-
-        /// Length of the generated wave in words. Only used with --type rust
-        #[clap(short, long, value_parser)]   // -> rust      sine, sweep, harmonics
-        length: Option<u32>,  
+        #[clap(short, long, default_value_t = String::from("harmonics.csv"),value_parser)]
+        infile: String,
     },
 }
 
@@ -210,109 +183,56 @@ fn main() -> Result<(), WavGenError> {
 
     let sampling_rate = 44100; // DEFAULT
 
-    match cli.command {
-        Commands::Sine {
-            frequency,
-            duration,
-            volume,
-            output_type,
-            length,
-            name,
-            out_file_name,
-        } => {
-            let number_samples = match output_type {
-                OutputType::Wav => duration * sampling_rate,
-                OutputType::Rust => match length {
-                    Some(len) => len,
-                    None => {
-                        let mut cmd = Cli::command();
-                        cmd.error(
-                            ErrorKind::MissingRequiredArgument,
-                            "--length required when using --type rust",
-                        ).exit();
-                        
-                        
-                    }
-                },
-            };
+    let number_samples = match cli.command {
+        OutputTypeCommands::Wav(ref wav_options) => wav_options.duration * sampling_rate,
+        OutputTypeCommands::Rust(ref rust_options) => rust_options.length,
+    };
 
-            println!("Number samples: {}", number_samples);
-            let data = gen_sine_wave(frequency, number_samples, volume, sampling_rate);
-            println!("volume: {}", volume);
+    let gen_command = match cli.command {
+        OutputTypeCommands::Wav(ref wav_options) => &wav_options.gen_command,
+        OutputTypeCommands::Rust(ref rust_options) => &rust_options.gen_command,
+    };
 
-            let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
-            let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path)
-                .map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
-
-            
-            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
-                        .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-                
-
-            bunt::println!(
-                "{$bold+green}Finished{/$} writing to {}",
-                out_path.display()
-            );
+    let data = match gen_command {
+        GenCommands::Sine { frequency } => {
+            gen_sine_wave(*frequency, number_samples, cli.volume, sampling_rate)
         }
-        Commands::Sweep {
-            out_file_name,
-            start,
-            finish,
-            duration,
-            volume,
-        } => {
-            let n_samples = duration * sampling_rate;
-            let data = gen_sweep_wave(start, finish, n_samples, volume, sampling_rate);
-            //let data = gen_sweep_wave(start, finish, duration, volume, sampling_rate);
-
-            let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
-            let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path)
-                .map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
-            wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
-                .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-            bunt::println!(
-                "{$bold+green}Finished{/$} writing to {}",
-                out_path.display()
-            );
+        GenCommands::Sweep { start, finish } => {
+            gen_sweep_wave(*start, *finish, number_samples, cli.volume, sampling_rate)
         }
-        Commands::Harmonics {
-            out_file_name,
-            harmonics,
-            duration,
-            length: _,
-            volume,
-        } => {
-            let p = Path::new(&harmonics);
-
+        GenCommands::Harmonics { infile } => {
+            let p = Path::new(infile);
             let mut harmonics_set =
                 read_harmonics(p).map_err(|_| WavGenError::ReadError(p.to_path_buf()))?;
-
             normalise_harmonics(&mut harmonics_set);
+            gen_harmonics(&harmonics_set, number_samples, cli.volume, sampling_rate)?
+        }
+    };
 
-            let n_samples = duration * sampling_rate;
+    let out_path = Path::new(&cli.out_file_name);
+    let mut out_file =
+        File::create(out_path).map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
 
-            //let data = gen_harmonics(&harmonics_set, duration, volume, sampling_rate)?;
-            let data = gen_harmonics(&harmonics_set, n_samples, volume, sampling_rate)?;
-
+    match cli.command {
+        OutputTypeCommands::Wav(_) => {
             let out_header = Header::new(wav::header::WAV_FORMAT_PCM, 2, sampling_rate, 16);
-            let out_path = Path::new(&out_file_name);
-            let mut out_file = File::create(out_path)
-                .map_err(|_| WavGenError::CreateError(out_path.to_path_buf()))?;
-
             wav::write(out_header, &wav::BitDepth::Sixteen(data), &mut out_file)
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
-            bunt::println!(
-                "{$bold+green}Finished{/$} writing to {}",
-                out_path.display()
-            );
         }
-    }
+        OutputTypeCommands::Rust(rust_options) => {
+            write_rust(rust_options.name.as_str(), &mut out_file)?;
+        }
+    };
+
+    bunt::println!(
+        "{$bold+green}Finished{/$} writing to {}",
+        out_path.display()
+    );
+
     Ok(())
 }
 
-/// Generate a sine wave as a set of `i16` samples an d returns this.
+/// Generate a sine wave as a set of `i16` samples and returns this.
 ///
 /// # Arguments
 /// * `frequency`- The frequency of the sine wave in hertz
@@ -487,7 +407,7 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
     Ok(harmonics)
 }
 
-/// Normalise the amplitides of the harmonics so that the sum of them all is 1
+/// Normalise the amplitudes of the harmonics so that the sum of them all is 1
 fn normalise_harmonics(harmonics_set: &mut Vec<Harmonic>) {
     let mut sum = 0.;
     for h in harmonics_set.iter_mut() {
