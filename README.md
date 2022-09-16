@@ -62,6 +62,8 @@ static DATA: [i16; 1024] = [
    // i16 values
 ];
 ```
+The i16 fvalues alternate between the left channel first and then the right channel. As stereo is not supported
+as yet, each channel has the same value.
 
 This works the same for the other wave types such as `sweep` and `harmonics`.
 
