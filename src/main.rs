@@ -60,6 +60,8 @@
 //!    // i16 values
 //! ];
 //! ```
+//! The i16 fvalues alternate between the left channel first and then the right channel. As stereo is not supported
+//! as yet, each channel has the same value.
 //!
 //! This works the same for the other wave types such as `sweep` and `harmonics`.
 //!
@@ -82,6 +84,7 @@ use std::error::Error;
 use std::f32::consts::PI;
 use std::fmt;
 use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use wav::Header;
@@ -135,7 +138,6 @@ struct RustOptions {
     gen_command: GenCommands,
 }
 
-// TODO look into global arguments to reduce the length of this. See https://docs.rs/clap/2.34.0/clap/struct.Arg.html#examples-35
 /// Structure used by the `clap` to process the subcommands
 #[derive(Subcommand)]
 enum GenCommands {
@@ -182,10 +184,11 @@ fn main() -> Result<(), WavGenError> {
     let cli = Cli::parse();
 
     let sampling_rate = 44100; // DEFAULT
+    let number_channels = 2; // DEFAULT
 
     let number_samples = match cli.command {
         OutputTypeCommands::Wav(ref wav_options) => wav_options.duration * sampling_rate,
-        OutputTypeCommands::Rust(ref rust_options) => rust_options.length,
+        OutputTypeCommands::Rust(ref rust_options) => rust_options.length / number_channels,
     };
 
     let gen_command = match cli.command {
@@ -220,7 +223,7 @@ fn main() -> Result<(), WavGenError> {
                 .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
         }
         OutputTypeCommands::Rust(rust_options) => {
-            write_rust(rust_options.name.as_str(), &mut out_file)?;
+            write_rust(&data, rust_options.name.as_str(), out_path, &mut out_file)?;
         }
     };
 
@@ -238,7 +241,7 @@ fn main() -> Result<(), WavGenError> {
 /// * `frequency`- The frequency of the sine wave in hertz
 /// * `duration`- The duration of the generated waveform in seconds
 /// * `number_samples` - the number of samples to be generated.
-///                      The duration of the genertate wave is the `number_samples/sampling_rate`.
+///                      The duration of the generated wave is the `number_samples/sampling_rate`.
 /// * `volume`- The volume of the generated sine wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
@@ -419,11 +422,43 @@ fn normalise_harmonics(harmonics_set: &mut Vec<Harmonic>) {
     }
 }
 
-fn write_rust(data_struct_name: &str, _out_file: &mut File) -> Result<(), WavGenError> {
-    bunt::println!(
-        "{$red}Not implemented!{/$} - Rust write to data struct {}",
-        data_struct_name
-    );
+fn write_rust(
+    data: &Vec<i16>,
+    data_struct_name: &str,
+    out_path: &Path,
+    out_file: &mut File,
+) -> Result<(), WavGenError> {
+    // let _template = "static DATA: [i16; 1024] = [
+    //         // i16 values
+    //     ];";
+
+    let mut buf_writer = BufWriter::new(out_file);
+
+    writeln!(
+        buf_writer,
+        "static {}: [i16; {}] = [",
+        data_struct_name,
+        data.len()
+    )
+    .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
+
+    let mut block_count = 0;
+    for sample in data {
+        if block_count == 0 {
+            write!(buf_writer, "    ")
+                .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
+        }
+        write!(buf_writer, "{:6},", sample)
+            .map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
+        block_count += 1;
+        if block_count == 10 {
+            writeln!(buf_writer).map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
+            block_count = 0;
+        }
+    }
+
+    writeln!(buf_writer, "];").map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
+
     Ok(())
 }
 
