@@ -462,31 +462,4 @@ fn write_rust(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    use std::path::Path;
-
-    #[test]
-    fn test_read() {
-        let path: &Path = Path::new("HARMONICS.csv");
-        match read_harmonics(&path) {
-            Ok(v) => v
-                .iter()
-                .for_each(|h| println!("{},{}", h.frequency, h.amplitude)),
-            Err(e) => println!("Cannot read harmonics file: {}", e),
-        }
-    }
-
-    #[test]
-    fn test_read_harmonics() {
-        let path: &Path = Path::new("../../sounds/harmonics.csv");
-        match read_harmonics(&path) {
-            Ok(v) => v
-                .iter()
-                .for_each(|h| println!("{},{}", h.frequency, h.amplitude)),
-            Err(e) => println!("Cannot read harmonics file: {}", e),
-        }
-    }
-}
