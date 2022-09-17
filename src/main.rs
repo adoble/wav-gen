@@ -457,6 +457,7 @@ fn write_rust(
         }
     }
 
+    writeln!(buf_writer).map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
     writeln!(buf_writer, "];").map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
 
     Ok(())
