@@ -16,7 +16,8 @@
 //! ```console
 //!  wav-gen wav sine --frequency 643 --duration 3 sine.wav
 //! ```
-//!
+//! Note: it is assumed throughout that a `wav-gen` alias has been crated for the executable `wav-gen.exe` 
+//! 
 //! ## Sweeping Sine Wave
 //!
 //! To generate a sine wave that:
@@ -50,7 +51,7 @@
 //! To generate a sine waveform of 500Hz as a rust data array of 44140 words use the following
 //!
 //! ```console
-//! wav-gen rust sine --frequency 500 --length 44100  wave.rs
+//! wav-gen rust sine --frequency 500 --length 44100  ./wave.rs
 //! ```
 //!
 //! The generated rust source code file looks like:
@@ -60,13 +61,35 @@
 //!    // i16 values
 //! ];
 //! ```
-//! The i16 fvalues alternate between the left channel first and then the right channel. As stereo is not supported
-//! as yet, each channel has the same value.
-//!
+//! The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
+//! 
+//! A monophonic data array can be generated:
+//! 
+//! ```console
+//! wav-gen rust sine --frequency 500 --length 1024 --mono ./wave_mono-rs
+//! ```
+//! 
 //! This works the same for the other wave types such as `sweep` and `harmonics`.
+//! 
+//! A different name for the rust data structure can be specified:
+//! ```console
+//! wav-gen rust sweep --start 500 --finish 1500 --name SWEEP_DATA ./sweep.rs
+//! ```
+//! 
+//! The generated rust source code looks like:
+//! 
+//! ```
+//! static SWEEP_DATA: [i16; 1024] = [
+//!          0,     0,    71,    71,   143,   143,   214,   214,   285,   285,
+//!        355,   355,   423,   423,   490,   490,   554,   554,   616,   616,
+//!        // ... more i16 values ...
+//!        947,   947,   777,   777,
+//! ];
+//! ```
 //!
 //! Notes:
-//! * The name of the data array is a capitalized version of the file name.
+//! 
+//! * Monophonic data represents twice the duration as for stereophonic data as the samples are not repeated for each channel.
 //! * For the rust output type any duration specified is an error.
 //!
 //! # More options
@@ -110,7 +133,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum OutputTypeCommands {
+    /// Generate a wav file
     Wav(WavOptions),
+    /// Generate a rust data structure
     Rust(RustOptions),
 }
 
