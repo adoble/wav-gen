@@ -126,13 +126,20 @@ struct WavOptions {
 
 #[derive(Args)]
 struct RustOptions {
-    /// Length of the generated wave in words.
+    /// Length of the generated wave in words. Independent of steereo or mono, only
+    /// this number of entries wil be generated
     #[clap(global = true, short, long, value_parser, default_value = "1024")]
     length: u32,
 
-    /// Name of the rust data struct generated.
+    /// Name of the rust data struct generated
     #[clap(global = true, short, long, value_parser, default_value = "DATA")]
     name: String,
+
+    /// Only samples for one channel are generated. This is different
+    /// to stereo (the default) where an entry for the left and then
+    /// for the right channel is generated
+    #[clap(global = true, short, long, action, default_value_t = false)]
+    mono: bool,
 
     #[clap(subcommand)]
     gen_command: GenCommands,
@@ -147,6 +154,7 @@ enum GenCommands {
         #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
     },
+
     /// Generate a wave that sweeps from one frequency to another over the duration
     Sweep {
         /// The starting freqency in hertz
@@ -157,6 +165,7 @@ enum GenCommands {
         #[clap(short, long, value_parser, default_value = "2000")]
         finish: u32,
     },
+
     /// Generate a wave that contains the harmonics specified in a external csv file.
     Harmonics {
         /// Name of the csv file containing the harmonics
@@ -184,12 +193,17 @@ fn main() -> Result<(), WavGenError> {
     let cli = Cli::parse();
 
     let sampling_rate = 44100; // DEFAULT
-    let number_channels = 2; // DEFAULT
+                               //let number_channels = 2; // DEFAULT
 
     let number_samples = match cli.command {
         OutputTypeCommands::Wav(ref wav_options) => wav_options.duration * sampling_rate,
-        OutputTypeCommands::Rust(ref rust_options) => rust_options.length / number_channels,
+        //OutputTypeCommands::Rust(ref rust_options) => rust_options.length / number_channels,
+        OutputTypeCommands::Rust(ref rust_options) => {
+            println!("Number channels {}", if rust_options.mono { 1 } else { 2 });
+            rust_options.length / (if rust_options.mono { 1 } else { 2 })
+        }
     };
+    println!("Number samples {}", number_samples);
 
     let gen_command = match cli.command {
         OutputTypeCommands::Wav(ref wav_options) => &wav_options.gen_command,
@@ -428,10 +442,6 @@ fn write_rust(
     out_path: &Path,
     out_file: &mut File,
 ) -> Result<(), WavGenError> {
-    // let _template = "static DATA: [i16; 1024] = [
-    //         // i16 values
-    //     ];";
-
     let mut buf_writer = BufWriter::new(out_file);
 
     writeln!(
@@ -462,5 +472,3 @@ fn write_rust(
 
     Ok(())
 }
-
-
