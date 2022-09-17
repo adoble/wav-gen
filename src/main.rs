@@ -89,7 +89,7 @@ use std::path::{Path, PathBuf};
 
 use wav::Header;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
@@ -126,8 +126,9 @@ struct WavOptions {
 
 #[derive(Args)]
 struct RustOptions {
-    /// Length of the generated wave in words. Independent of steereo or mono, only
-    /// this number of entries wil be generated
+    /// Length of the generated wave in words. Independent of stereo or mono, only
+    /// this number of entries wil be generated. For stereo the length needs to be 
+    /// an even number
     #[clap(global = true, short, long, value_parser, default_value = "1024")]
     length: u32,
 
@@ -195,15 +196,23 @@ fn main() -> Result<(), WavGenError> {
     let sampling_rate = 44100; // DEFAULT
                                //let number_channels = 2; // DEFAULT
 
-    let number_samples = match cli.command {
-        OutputTypeCommands::Wav(ref wav_options) => wav_options.duration * sampling_rate,
-        //OutputTypeCommands::Rust(ref rust_options) => rust_options.length / number_channels,
+    let (number_samples, number_channels) = match cli.command {
+        OutputTypeCommands::Wav(ref wav_options) => (wav_options.duration * sampling_rate, 2),
         OutputTypeCommands::Rust(ref rust_options) => {
-            println!("Number channels {}", if rust_options.mono { 1 } else { 2 });
-            rust_options.length / (if rust_options.mono { 1 } else { 2 })
+            // If stereo need a even length so that left and right samples are present
+            if !rust_options.mono && rust_options.length % 2 != 0 {
+                let mut cmd = Cli::command();
+                cmd.error(
+                    ErrorKind::InvalidValue,
+                    "With stereo the length of the data structure needs to be an even number",
+                )
+                .exit();
+            }
+            let n_channels: u8 = if rust_options.mono { 1 } else { 2 };
+            let n_samples = rust_options.length / n_channels as u32;
+            (n_samples, n_channels)
         }
     };
-    println!("Number samples {}", number_samples);
 
     let gen_command = match cli.command {
         OutputTypeCommands::Wav(ref wav_options) => &wav_options.gen_command,
@@ -211,18 +220,33 @@ fn main() -> Result<(), WavGenError> {
     };
 
     let data = match gen_command {
-        GenCommands::Sine { frequency } => {
-            gen_sine_wave(*frequency, number_samples, cli.volume, sampling_rate)
-        }
-        GenCommands::Sweep { start, finish } => {
-            gen_sweep_wave(*start, *finish, number_samples, cli.volume, sampling_rate)
-        }
+        GenCommands::Sine { frequency } => gen_sine_wave(
+            *frequency,
+            number_samples,
+            number_channels,
+            cli.volume,
+            sampling_rate,
+        ),
+        GenCommands::Sweep { start, finish } => gen_sweep_wave(
+            *start,
+            *finish,
+            number_samples,
+            number_channels,
+            cli.volume,
+            sampling_rate,
+        ),
         GenCommands::Harmonics { infile } => {
             let p = Path::new(infile);
             let mut harmonics_set =
                 read_harmonics(p).map_err(|_| WavGenError::ReadError(p.to_path_buf()))?;
             normalise_harmonics(&mut harmonics_set);
-            gen_harmonics(&harmonics_set, number_samples, cli.volume, sampling_rate)?
+            gen_harmonics(
+                &harmonics_set,
+                number_samples,
+                number_channels,
+                cli.volume,
+                sampling_rate,
+            )?
         }
     };
 
@@ -253,13 +277,19 @@ fn main() -> Result<(), WavGenError> {
 ///
 /// # Arguments
 /// * `frequency`- The frequency of the sine wave in hertz
-/// * `duration`- The duration of the generated waveform in seconds
 /// * `number_samples` - the number of samples to be generated.
 ///                      The duration of the generated wave is the `number_samples/sampling_rate`.
+/// * `number_channels` - The number of channels (1 or 2)
 /// * `volume`- The volume of the generated sine wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
-fn gen_sine_wave(frequency: u32, number_samples: u32, volume: u16, sampling_rate: u32) -> Vec<i16> {
+fn gen_sine_wave(
+    frequency: u32,
+    number_samples: u32,
+    number_channels: u8,
+    volume: u16,
+    sampling_rate: u32,
+) -> Vec<i16> {
     let mut data = Vec::<i16>::new();
 
     for t in 0..number_samples {
@@ -269,7 +299,9 @@ fn gen_sine_wave(frequency: u32, number_samples: u32, volume: u16, sampling_rate
         // Data consists  of left channnel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
         data.push(amplitude);
-        data.push(amplitude);
+        if number_channels == 2 {
+            data.push(amplitude);
+        }
     }
 
     data
@@ -281,7 +313,8 @@ fn gen_sine_wave(frequency: u32, number_samples: u32, volume: u16, sampling_rate
 /// * `start` - The start frequency of sweep in hertz
 /// * `finish`- The finishing frequency of the sweep in hertz
 /// * ´number_samples" - the number of samples to be generated.
-///                      The duration of the genertate wave is the `number_samples/sampling_rate`.
+///                      The duration of the generated wave is the `number_samples/sampling_rate`.
+/// * `number_channels` - The number of channels (1 or 2)
 /// * `volume`- The volume of the generated wave
 /// * `sampling_rate`- The rate at which the wave wave is sampled, e.g 44100 hertz.
 ///                    The `sample_rate` and the `duration` determine the the size of `data`  
@@ -289,6 +322,7 @@ fn gen_sweep_wave(
     start: u32,
     finish: u32,
     number_samples: u32,
+    number_channels: u8,
     volume: u16,
     sampling_rate: u32,
 ) -> Vec<i16> {
@@ -304,7 +338,9 @@ fn gen_sweep_wave(
         // Data consists  of left channnel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
         data.push(amplitude);
-        data.push(amplitude);
+        if number_channels == 2 {
+            data.push(amplitude);
+        }
 
         // Adjust the frequency for the next iteration
         sweep_frequency = sweep_frequency + frequency_increment;
@@ -317,6 +353,7 @@ fn gen_sweep_wave(
 fn gen_harmonics(
     harmonics_set: &Vec<Harmonic>,
     number_samples: u32,
+    number_channels: u8,
     volume: u16,
     sampling_rate: u32,
 ) -> Result<Vec<i16>, WavGenError> {
@@ -325,6 +362,7 @@ fn gen_harmonics(
         let mut data = gen_sine_wave(
             h.frequency as u32,
             number_samples,
+            number_channels,
             (h.amplitude * volume as f32) as u16,
             sampling_rate,
         );
@@ -333,6 +371,7 @@ fn gen_harmonics(
             let overlay_data = gen_sine_wave(
                 harmonics_set[harmonic_index].frequency as u32,
                 number_samples,
+                number_channels,
                 (harmonics_set[harmonic_index].amplitude * volume as f32) as u16,
                 sampling_rate,
             );
