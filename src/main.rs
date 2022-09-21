@@ -16,8 +16,8 @@
 //! ```console
 //!  wav-gen wav sine --frequency 643 --duration 3 sine.wav
 //! ```
-//! Note: it is assumed throughout that a `wav-gen` alias has been crated for the executable `wav-gen.exe` 
-//! 
+//! Note: it is assumed throughout that a `wav-gen` alias has been crated for the executable `wav-gen.exe`
+//!
 //! ## Sweeping Sine Wave
 //!
 //! To generate a sine wave that:
@@ -57,27 +57,34 @@
 //! The generated rust source code file looks like:
 //!
 //! ```
-//! static DATA: [i16; 1024] = [
+//! pub static DATA: [i16; 1024] = [
 //!    // i16 values
 //! ];
 //! ```
 //! The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
 //! 
-//! A monophonic data array can be generated:
+//! if the structure has been, for instance, gernated in the file `wave.rs` then it can be imported with:
 //! 
+//! ```
+//! use wave;
+//! ```
+//! 
+//! 
+//! Alternativly  monophonic data array can be generated:
+//!
 //! ```console
 //! wav-gen rust sine --frequency 500 --length 1024 --mono ./wave_mono-rs
 //! ```
-//! 
+//!
 //! This works the same for the other wave types such as `sweep` and `harmonics`.
-//! 
+//!
 //! A different name for the rust data structure can be specified:
 //! ```console
 //! wav-gen rust sweep --start 500 --finish 1500 --name SWEEP_DATA ./sweep.rs
 //! ```
-//! 
+//!
 //! The generated rust source code looks like:
-//! 
+//!
 //! ```
 //! static SWEEP_DATA: [i16; 1024] = [
 //!          0,     0,    71,    71,   143,   143,   214,   214,   285,   285,
@@ -88,9 +95,17 @@
 //! ```
 //!
 //! Notes:
-//! 
+//!
 //! * Monophonic data represents twice the duration as for stereophonic data as the samples are not repeated for each channel.
 //! * For the rust output type any duration specified is an error.
+//! 
+//! For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated 
+//! by using the `--cycle` flag, e.g.:
+//!  
+//! 
+//! ```console
+//! wav-gen rust sine --frequency 2000 --cycle  ./src/SINE_DATA.rs
+//! ```
 //!
 //! # More options
 //! For more options use:
@@ -112,7 +127,7 @@ use std::path::{Path, PathBuf};
 
 use wav::Header;
 
-use clap::{Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
+use clap::{ArgGroup, Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
@@ -152,7 +167,7 @@ struct WavOptions {
 #[derive(Args)]
 struct RustOptions {
     /// Length of the generated wave in words. Independent of stereo or mono, only
-    /// this number of entries wil be generated. For stereo the length needs to be 
+    /// this number of entries will be generated. For stereo the length needs to be
     /// an even number
     #[clap(global = true, short, long, value_parser, default_value = "1024")]
     length: u32,
@@ -175,10 +190,19 @@ struct RustOptions {
 #[derive(Subcommand)]
 enum GenCommands {
     /// Generate a sine wave
+    #[clap(group(
+    ArgGroup::new("size")
+    .required(true)
+    .args(&["length", "cycle"]),
+    ))]
     Sine {
         /// Frequency of the sine wave in hertz
         #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
+
+        /// Generate just one cycle of the sine wave. Cannot be used with --length
+        #[clap(short, long, action)]
+        cycle: bool,
     },
 
     /// Generate a wave that sweeps from one frequency to another over the duration
@@ -245,13 +269,20 @@ fn main() -> Result<(), WavGenError> {
     };
 
     let data = match gen_command {
-        GenCommands::Sine { frequency } => gen_sine_wave(
-            *frequency,
-            number_samples,
-            number_channels,
-            cli.volume,
-            sampling_rate,
-        ),
+        GenCommands::Sine { frequency, cycle } => {
+            let n_samples = if *cycle {
+                sampling_rate * number_channels as u32 / frequency
+            } else {
+                number_samples
+            };
+            gen_sine_wave(
+                *frequency,
+                n_samples,
+                number_channels,
+                cli.volume,
+                sampling_rate,
+            )
+        }
         GenCommands::Sweep { start, finish } => gen_sweep_wave(
             *start,
             *finish,
@@ -510,7 +541,7 @@ fn write_rust(
 
     writeln!(
         buf_writer,
-        "static {}: [i16; {}] = [",
+        "pub static {}: [i16; {}] = [",
         data_struct_name,
         data.len()
     )

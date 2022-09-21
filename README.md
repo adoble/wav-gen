@@ -59,13 +59,20 @@ wav-gen rust sine --frequency 500 --length 44100  ./wave.rs
 The generated rust source code file looks like:
 
 ```rust
-static DATA: [i16; 1024] = [
+pub static DATA: [i16; 1024] = [
    // i16 values
 ];
 ```
 The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
 
-A monophonic data array can be generated:
+if the structure has been, for instance, gernated in the file `wave.rs` then it can be imported with:
+
+```rust
+use wave;
+```
+
+
+Alternativly  monophonic data array can be generated:
 
 ```console
 wav-gen rust sine --frequency 500 --length 1024 --mono ./wave_mono-rs
@@ -93,6 +100,14 @@ Notes:
 
 * Monophonic data represents twice the duration as for stereophonic data as the samples are not repeated for each channel.
 * For the rust output type any duration specified is an error.
+
+For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated
+by using the `--cycle` flag, e.g.:
+
+
+```console
+wav-gen rust sine --frequency 2000 --cycle  ./src/SINE_DATA.rs
+```
 
 ## More options
 For more options use:
