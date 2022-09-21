@@ -63,14 +63,14 @@
 //! ```
 //! The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
 //! 
-//! if the structure has been, for instance, gernated in the file `wave.rs` then it can be imported with:
+//! if the structure has been, for instance, generated in the file `wave.rs` then it can be imported with:
 //! 
 //! ```
 //! use wave;
 //! ```
 //! 
 //! 
-//! Alternativly  monophonic data array can be generated:
+//! Alternativly monophonic data array can be generated:
 //!
 //! ```console
 //! wav-gen rust sine --frequency 500 --length 1024 --mono ./wave_mono-rs
@@ -86,7 +86,7 @@
 //! The generated rust source code looks like:
 //!
 //! ```
-//! static SWEEP_DATA: [i16; 1024] = [
+//! pub static SWEEP_DATA: [i16; 1024] = [
 //!          0,     0,    71,    71,   143,   143,   214,   214,   285,   285,
 //!        355,   355,   423,   423,   490,   490,   554,   554,   616,   616,
 //!        // ... more i16 values ...
@@ -94,11 +94,6 @@
 //! ];
 //! ```
 //!
-//! Notes:
-//!
-//! * Monophonic data represents twice the duration as for stereophonic data as the samples are not repeated for each channel.
-//! * For the rust output type any duration specified is an error.
-//! 
 //! For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated 
 //! by using the `--cycle` flag, e.g.:
 //!  
