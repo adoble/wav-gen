@@ -231,7 +231,7 @@ enum GeneratedSize {
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Harmonic {
-    frequency: f32, // In hertz
+    frequency: u32, // In hertz
     amplitude: f32,
 }
 
@@ -519,7 +519,7 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
     for result in rdr.records() {
         let record = result.map_err(|_| WavGenError::ReadError(harmonics_path.to_path_buf()))?;
 
-        let f: f32 = record
+        let f: u32 = record
             .get(0)
             .ok_or_else(|| WavGenError::HarmonicParseError(line_number))?
             .trim()
