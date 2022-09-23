@@ -124,7 +124,7 @@ use num::Integer;
 
 use wav::Header;
 
-use clap::{ArgGroup, Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
