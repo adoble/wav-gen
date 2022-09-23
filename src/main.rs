@@ -166,8 +166,13 @@ struct RustOptions {
     /// Length of the generated wave in words. Independent of stereo or mono, only
     /// this number of entries will be generated. For stereo the length needs to be
     /// an even number
-    #[clap(global = true, short, long, value_parser, default_value = "1024")]
+    #[clap(global = true, short, long, value_parser, default_value = "1024" )]
     length: u32,
+
+    /// Generate just one cycle of the waveform. Cannot be used with --length
+    #[clap(global = true, short, long, action, conflicts_with("length") )]
+    cycle: bool,
+
 
     /// Name of the rust data struct generated
     #[clap(global = true, short, long, value_parser, default_value = "DATA")]
@@ -197,9 +202,6 @@ enum GenCommands {
         #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
 
-        /// Generate just one cycle of the sine wave. Cannot be used with --length
-        #[clap(short, long, action)]
-        cycle: bool,
     },
 
     /// Generate a wave that sweeps from one frequency to another over the duration
@@ -242,8 +244,8 @@ fn main() -> Result<(), WavGenError> {
     let sampling_rate = 44100; // DEFAULT
                                //let number_channels = 2; // DEFAULT
 
-    let (number_samples, number_channels) = match cli.command {
-        OutputTypeCommands::Wav(ref wav_options) => (wav_options.duration * sampling_rate, 2),
+    let (number_samples, number_channels, cycle) = match cli.command {
+        OutputTypeCommands::Wav(ref wav_options) => (wav_options.duration * sampling_rate, 2, false),
         OutputTypeCommands::Rust(ref rust_options) => {
             // If stereo need a even length so that left and right samples are present
             if !rust_options.mono && rust_options.length % 2 != 0 {
@@ -256,7 +258,7 @@ fn main() -> Result<(), WavGenError> {
             }
             let n_channels: u8 = if rust_options.mono { 1 } else { 2 };
             let n_samples = rust_options.length / n_channels as u32;
-            (n_samples, n_channels)
+            (n_samples, n_channels, rust_options.cycle)
         }
     };
 
@@ -266,8 +268,8 @@ fn main() -> Result<(), WavGenError> {
     };
 
     let data = match gen_command {
-        GenCommands::Sine { frequency, cycle } => {
-            let n_samples = if *cycle {
+        GenCommands::Sine { frequency } => {
+            let n_samples = if cycle {
                 sampling_rate * number_channels as u32 / frequency
             } else {
                 number_samples
