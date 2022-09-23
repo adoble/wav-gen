@@ -62,14 +62,14 @@
 //! ];
 //! ```
 //! The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
-//! 
+//!
 //! if the structure has been, for instance, generated in the file `wave.rs` then it can be imported with:
-//! 
+//!
 //! ```
 //! use wave;
 //! ```
-//! 
-//! 
+//!
+//!
 //! Alternativly monophonic data array can be generated:
 //!
 //! ```console
@@ -94,10 +94,10 @@
 //! ];
 //! ```
 //!
-//! For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated 
+//! For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated
 //! by using the `--cycle` flag, e.g.:
 //!  
-//! 
+//!
 //! ```console
 //! wav-gen rust sine --frequency 2000 --cycle  ./src/SINE_DATA.rs
 //! ```
@@ -166,13 +166,12 @@ struct RustOptions {
     /// Length of the generated wave in words. Independent of stereo or mono, only
     /// this number of entries will be generated. For stereo the length needs to be
     /// an even number
-    #[clap(global = true, short, long, value_parser, default_value = "1024" )]
+    #[clap(global = true, short, long, value_parser, default_value = "1024")]
     length: u32,
 
     /// Generate just one cycle of the waveform. Cannot be used with --length
-    #[clap(global = true, short, long, action, conflicts_with("length") )]
+    #[clap(global = true, short, long, action, conflicts_with("length"))]
     cycle: bool,
-
 
     /// Name of the rust data struct generated
     #[clap(global = true, short, long, value_parser, default_value = "DATA")]
@@ -192,19 +191,13 @@ struct RustOptions {
 #[derive(Subcommand)]
 enum GenCommands {
     /// Generate a sine wave
-    // #[clap(group(
-    // ArgGroup::new("size")
-    // .required(true)
-    // .args(&["length", "cycle"]),
-    // ))] 
     Sine {
         /// Frequency of the sine wave in hertz
         #[clap(short, long, value_parser, default_value = "432")]
         frequency: u32,
-
     },
 
-    /// Generate a wave that sweeps from one frequency to another over the duration
+    /// Generate a sine wave that sweeps from one frequency to another over the duration
     Sweep {
         /// The starting freqency in hertz
         #[clap(short, long, value_parser, default_value = "100")]
@@ -215,7 +208,7 @@ enum GenCommands {
         finish: u32,
     },
 
-    /// Generate a wave that contains the harmonics specified in a external csv file.
+    /// Generate a wave that combines the sine waves specified in a external csv file.
     Harmonics {
         /// Name of the csv file containing the harmonics
         #[clap(short, long, default_value_t = String::from("harmonics.csv"),value_parser)]
@@ -227,6 +220,11 @@ enum GenCommands {
 enum OutputType {
     Wav,
     Rust,
+}
+
+enum GeneratedSize {
+    NumberSamples(u32),
+    Cyclic,
 }
 
 /// Represents an harmonic as a frequency and it's relative amplitude to other harmonics
@@ -244,8 +242,12 @@ fn main() -> Result<(), WavGenError> {
     let sampling_rate = 44100; // DEFAULT
                                //let number_channels = 2; // DEFAULT
 
-    let (number_samples, number_channels, cycle) = match cli.command {
-        OutputTypeCommands::Wav(ref wav_options) => (wav_options.duration * sampling_rate, 2, false),
+    // Process output type command options
+    let (size, number_channels) = match cli.command {
+        OutputTypeCommands::Wav(ref wav_options) => (
+            GeneratedSize::NumberSamples(wav_options.duration * sampling_rate),
+            2,
+        ),
         OutputTypeCommands::Rust(ref rust_options) => {
             // If stereo need a even length so that left and right samples are present
             if !rust_options.mono && rust_options.length % 2 != 0 {
@@ -257,8 +259,13 @@ fn main() -> Result<(), WavGenError> {
                 .exit();
             }
             let n_channels: u8 = if rust_options.mono { 1 } else { 2 };
-            let n_samples = rust_options.length / n_channels as u32;
-            (n_samples, n_channels, rust_options.cycle)
+            let size = if !rust_options.cycle {
+                GeneratedSize::NumberSamples(rust_options.length / n_channels as u32)
+            } else {
+                GeneratedSize::Cyclic
+            };
+
+            (size, n_channels)
         }
     };
 
@@ -269,10 +276,9 @@ fn main() -> Result<(), WavGenError> {
 
     let data = match gen_command {
         GenCommands::Sine { frequency } => {
-            let n_samples = if cycle {
-                sampling_rate * number_channels as u32 / frequency
-            } else {
-                number_samples
+            let n_samples = match size {
+                GeneratedSize::Cyclic => sampling_rate * number_channels as u32 / frequency,
+                GeneratedSize::NumberSamples(number_samples) => number_samples
             };
             gen_sine_wave(
                 *frequency,
@@ -282,24 +288,42 @@ fn main() -> Result<(), WavGenError> {
                 sampling_rate,
             )
         }
-        GenCommands::Sweep { start, finish } => gen_sweep_wave(
+        GenCommands::Sweep { start, finish } => {
+            let n_samples = match size {
+                GeneratedSize::Cyclic => {
+                    let mut cmd = Cli::command();
+                    cmd.error(
+                        ErrorKind::ArgumentConflict,
+                        "Specifying --cycle for the subcommand sweep is not meaningful",
+                    )
+                    .exit();
+                }
+                GeneratedSize::NumberSamples(n_samples) => n_samples,
+            };
+           
+            gen_sweep_wave(
             *start,
             *finish,
-            number_samples,
+            n_samples, 
             number_channels,
             cli.volume,
             sampling_rate,
-        ),
+        )},
 
         // TODO Cycles for harmonics. See https://en.wikipedia.org/wiki/Least_common_multiple
         GenCommands::Harmonics { infile } => {
             let p = Path::new(infile);
             let mut harmonics_set =
                 read_harmonics(p).map_err(|_| WavGenError::ReadError(p.to_path_buf()))?;
-            normalise_harmonics(&mut harmonics_set); 
+            normalise_harmonics(&mut harmonics_set);
+
+            let n_samples = match size {
+                GeneratedSize::Cyclic => todo!(),
+                GeneratedSize::NumberSamples(n_samples) => n_samples,
+            };
             gen_harmonics(
                 &harmonics_set,
-                number_samples,
+                n_samples,
                 number_channels,
                 cli.volume,
                 sampling_rate,
@@ -570,14 +594,13 @@ fn write_rust(
 }
 
 /// Finds the least common numerator of the periods in a set of sine waves, i.e the time (in number of samples) at which
-/// all the sine wave start at zero (are sychronised) again. 
+/// all the sine wave start at zero (are sychronised) again.
 #[allow(dead_code)]
-fn sync_period(frequencies: &Vec<u32> , sampling_rate: u32 ) -> u32 {
-          
+fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let mut sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate / f).collect();
-    
+
     sample_periods.insert(0, 1);
-    
+
     let mut period: u32 = 1;
     for v in sample_periods.iter() {
         //l = lcm(l , *v);
