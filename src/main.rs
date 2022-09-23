@@ -191,7 +191,7 @@ enum GenCommands {
     // ArgGroup::new("size")
     // .required(true)
     // .args(&["length", "cycle"]),
-    // ))]
+    // ))] 
     Sine {
         /// Frequency of the sine wave in hertz
         #[clap(short, long, value_parser, default_value = "432")]
