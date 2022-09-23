@@ -1,6 +1,6 @@
 [package]
 name = "wav-gen"
-version = "0.4.0"
+version = "0.5.0"
 description = "Generates a waveform using either the wav format or as a rust data structure"
 authors = ["Andrew Doble"]
 edition = "2021"
@@ -12,4 +12,5 @@ clap = { version = "3.2.20", features = ["derive"] }
 wav = "1.0.0"
 csv = "1.1"
 bunt = "0.2"
+num = "0.4.0"
 #serde = { version = "1.0", features = ["derive"] }

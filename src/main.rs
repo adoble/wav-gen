@@ -119,6 +119,8 @@ use std::fmt;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+//use num::integer::lcm;
+use num::Integer;
 
 use wav::Header;
 
@@ -185,11 +187,11 @@ struct RustOptions {
 #[derive(Subcommand)]
 enum GenCommands {
     /// Generate a sine wave
-    #[clap(group(
-    ArgGroup::new("size")
-    .required(true)
-    .args(&["length", "cycle"]),
-    ))]
+    // #[clap(group(
+    // ArgGroup::new("size")
+    // .required(true)
+    // .args(&["length", "cycle"]),
+    // ))]
     Sine {
         /// Frequency of the sine wave in hertz
         #[clap(short, long, value_parser, default_value = "432")]
@@ -286,11 +288,13 @@ fn main() -> Result<(), WavGenError> {
             cli.volume,
             sampling_rate,
         ),
+
+        // TODO Cycles for harmonics. See https://en.wikipedia.org/wiki/Least_common_multiple
         GenCommands::Harmonics { infile } => {
             let p = Path::new(infile);
             let mut harmonics_set =
                 read_harmonics(p).map_err(|_| WavGenError::ReadError(p.to_path_buf()))?;
-            normalise_harmonics(&mut harmonics_set);
+            normalise_harmonics(&mut harmonics_set); 
             gen_harmonics(
                 &harmonics_set,
                 number_samples,
@@ -561,4 +565,22 @@ fn write_rust(
     writeln!(buf_writer, "];").map_err(|_| WavGenError::WriteError(out_path.to_path_buf()))?;
 
     Ok(())
+}
+
+/// Finds the least common numerator of the periods in a set of sine waves, i.e the time (in number of samples) at which
+/// all the sine wave start at zero (are sychronised) again. 
+#[allow(dead_code)]
+fn sync_period(frequencies: &Vec<u32> , sampling_rate: u32 ) -> u32 {
+          
+    let mut sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate / f).collect();
+    
+    sample_periods.insert(0, 1);
+    
+    let mut period: u32 = 1;
+    for v in sample_periods.iter() {
+        //l = lcm(l , *v);
+        period = period.lcm(v);
+    }
+
+    period
 }
