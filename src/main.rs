@@ -119,8 +119,8 @@ use std::fmt;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-//use num::integer::lcm;
-use num::Integer;
+use num::integer::lcm;
+
 
 use wav::Header;
 
@@ -318,9 +318,15 @@ fn main() -> Result<(), WavGenError> {
             normalise_harmonics(&mut harmonics_set);
 
             let n_samples = match size {
-                GeneratedSize::Cyclic => todo!(),
+                GeneratedSize::Cyclic => {
+                    let frequencies = harmonics_set.iter().map(|h| h.frequency).collect();
+                    println!("frequencies {:?}", frequencies);
+                    sync_period(&frequencies, sampling_rate)
+                },
                 GeneratedSize::NumberSamples(n_samples) => n_samples,
             };
+
+            println!("n_samples {}", n_samples);
             gen_harmonics(
                 &harmonics_set,
                 n_samples,
@@ -600,11 +606,13 @@ fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let mut sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate / f).collect();
 
     sample_periods.insert(0, 1);
+    println!("sample_periods {:?}", sample_periods);
 
     let mut period: u32 = 1;
     for v in sample_periods.iter() {
-        //l = lcm(l , *v);
-        period = period.lcm(v);
+        period = lcm(period , *v);
+        println!("period {}", period);
+        //period = period.lcm(v);
     }
 
     period
