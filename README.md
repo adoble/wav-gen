@@ -96,7 +96,7 @@ pub static SWEEP_DATA: [i16; 1024] = [
 ];
 ```
 
-For sine waves, instead of generating a rust source code file with a large number of samples, only one cycle can be generated
+For sine waves and harmonics, instead of generating a rust source code file with a large number of samples, only one cycle can be generated
 by using the `--cycle` flag, e.g.:
 
 
