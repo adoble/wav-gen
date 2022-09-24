@@ -1,6 +1,6 @@
 [package]
 name = "wav-gen"
-version = "0.5.2"
+version = "0.5.3"
 description = "Generates a waveform using either the wav format or as a rust data structure"
 authors = ["Andrew Doble"]
 edition = "2021"
