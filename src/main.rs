@@ -115,16 +115,19 @@
 use bunt;
 use std::error::Error;
 use std::f32::consts::PI;
-use std::fmt;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use num::integer::lcm;
 
 
 use wav::Header;
 
 use clap::{Args, CommandFactory, ErrorKind, Parser, Subcommand, ValueEnum};
+
+mod error;
+
+type WavGenError = error::WavGenError;
 
 /// Structure used by the `clap` to process the command line arguments
 #[derive(Parser)]
@@ -319,13 +322,11 @@ fn main() -> Result<(), WavGenError> {
             let n_samples = match size {
                 GeneratedSize::Cyclic => {
                     let frequencies = harmonics_set.iter().map(|h| h.frequency).collect();
-                    println!("frequencies {:?}", frequencies);
                     sync_period(&frequencies, sampling_rate)
                 },
                 GeneratedSize::NumberSamples(n_samples) => n_samples,
             };
 
-            println!("n_samples {}", n_samples);
             gen_harmonics(
                 &harmonics_set,
                 n_samples,
@@ -472,46 +473,6 @@ fn gen_harmonics(
     }
 }
 
-// Error handling
-// TODO move to another file
-
-enum WavGenError {
-    ReadError(PathBuf),
-    WriteError(PathBuf),
-    CreateError(PathBuf),
-    HarmonicParseError(usize),
-    NoHarmonics,
-}
-
-//Required for the ? operator
-impl std::error::Error for WavGenError {}
-
-// Display for the error
-impl fmt::Display for WavGenError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            WavGenError::ReadError(p) => f.write_fmt(format_args!("could not read file {:?}", p)),
-            WavGenError::WriteError(p) => f.write_fmt(format_args!("could not write file {:?}", p)),
-            WavGenError::CreateError(p) => {
-                f.write_fmt(format_args!("unable to create file {:?}", p))
-            }
-            WavGenError::HarmonicParseError(line_number) => f.write_fmt(format_args!(
-                "parse error in harmonic file at line {:?}",
-                line_number
-            )),
-            WavGenError::NoHarmonics => f.write_fmt(format_args!("no harmonics found")),
-        }
-    }
-}
-
-// Using the display implementation for the debug implementation means that
-// user friendly messages are shown when the main funtion exists with
-// an error
-impl std::fmt::Debug for WavGenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <WavGenError as fmt::Display>::fmt(self, f)
-    }
-}
 
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
     //fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  HarmonicReadError> {
@@ -608,7 +569,6 @@ fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let mut period: u32 = 1;
     for v in scaled_sample_periods.iter() {
         period = lcm(period , *v);
-        println!("period {}", period);
     }
 
     period / scale
