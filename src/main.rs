@@ -603,17 +603,18 @@ fn write_rust(
 /// all the sine wave start at zero (are sychronised) again.
 #[allow(dead_code)]
 fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
-    let mut sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate / f).collect();
+    let scale: u32 = 20000;  // Used to scale up each period so that it remains an integer
+    let scaled_sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate * scale / f).collect();
 
-    sample_periods.insert(0, 1);
-    println!("sample_periods {:?}", sample_periods);
+    //sample_periods.insert(0, 1);
+    println!("sample_periods {:?}", scaled_sample_periods);
 
     let mut period: u32 = 1;
-    for v in sample_periods.iter() {
+    for v in scaled_sample_periods.iter() {
         period = lcm(period , *v);
         println!("period {}", period);
         //period = period.lcm(v);
     }
 
-    period
+    period / scale
 }
