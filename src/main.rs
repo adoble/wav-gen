@@ -310,7 +310,6 @@ fn main() -> Result<(), WavGenError> {
             sampling_rate,
         )},
 
-        // TODO Cycles for harmonics. See https://en.wikipedia.org/wiki/Least_common_multiple
         GenCommands::Harmonics { infile } => {
             let p = Path::new(infile);
             let mut harmonics_set =
@@ -505,7 +504,7 @@ impl fmt::Display for WavGenError {
     }
 }
 
-// Using the display implmentation for the debug implementation means that
+// Using the display implementation for the debug implementation means that
 // user friendly messages are shown when the main funtion exists with
 // an error
 impl std::fmt::Debug for WavGenError {
@@ -606,14 +605,10 @@ fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let scale: u32 = 20000;  // Used to scale up each period so that it remains an integer
     let scaled_sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate * scale / f).collect();
 
-    //sample_periods.insert(0, 1);
-    println!("sample_periods {:?}", scaled_sample_periods);
-
     let mut period: u32 = 1;
     for v in scaled_sample_periods.iter() {
         period = lcm(period , *v);
         println!("period {}", period);
-        //period = period.lcm(v);
     }
 
     period / scale
