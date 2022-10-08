@@ -48,7 +48,7 @@ Then use:
 ```console
 wav-gen wav harmonics --infile harmonics.csv output_wave_file.wav
 ```
-### Rust data arrays
+### Rust Data Arrays
 
 To generate a sine waveform of 500Hz as a rust data array of 44140 words use the following
 
@@ -65,14 +65,14 @@ pub static DATA: [i16; 1024] = [
 ```
 The i16 values alternate between the left channel first and then the right channel. For stereo, each channel has the same value.
 
-if the structure has been, for instance, generated in the file `wave.rs` then it can be imported with:
+If the structure has been, for instance, generated in the file `wave.rs` then it can be imported with:
 
 ```rust
 use wave;
 ```
 
 
-Alternativly monophonic data array can be generated:
+Alternatively monophonic data arrays can be generated:
 
 ```console
 wav-gen rust sine --frequency 500 --length 1024 --mono ./wave_mono-rs
