@@ -484,14 +484,14 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
 
         let f: u32 = record
             .get(0)
-            .ok_or_else(|| WavGenError::HarmonicParseError(line_number))?
+            .ok_or(WavGenError::HarmonicParseError(line_number))?
             .trim()
             .parse()
             .map_err(|_| WavGenError::HarmonicParseError(line_number))?;
 
         let a: f32 = record
             .get(1)
-            .ok_or_else(|| WavGenError::HarmonicParseError(line_number))?
+            .ok_or(WavGenError::HarmonicParseError(line_number))?
             .trim()
             .parse()
             .map_err(|_| WavGenError::HarmonicParseError(line_number))?;
