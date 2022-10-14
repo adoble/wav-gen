@@ -508,7 +508,7 @@ fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>
 }
 
 /// Normalise the amplitudes of the harmonics so that the sum of them all is 1
-fn normalise_harmonics(harmonics_set: &mut Vec<Harmonic>) {
+fn normalise_harmonics(harmonics_set: &mut [Harmonic]) {
     let mut sum = 0.;
     for h in harmonics_set.iter_mut() {
         sum += h.amplitude;
