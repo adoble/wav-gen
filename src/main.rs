@@ -436,7 +436,7 @@ fn gen_sweep_wave(
 
 #[allow(unused_variables)]
 fn gen_harmonics(
-    harmonics_set: &Vec<Harmonic>,
+    harmonics_set: &[Harmonic],
     number_samples: u32,
     number_channels: u8,
     volume: u16,
