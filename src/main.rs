@@ -558,7 +558,7 @@ fn write_rust(
 
 /// Finds the least common numerator of the periods in a set of sine waves, i.e the time (in number of samples) at which
 /// all the sine wave start at zero (are sychronised) again.
-#[allow(dead_code)]
+#[allow(clippy::ptr_arg)]
 fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let scale: u32 = 20000; // Used to scale up each period so that it remains an integer
     let scaled_sample_periods: Vec<u32> = frequencies
