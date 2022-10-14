@@ -465,7 +465,7 @@ fn gen_harmonics(
                 data[i] += overlay_data[i];
             }
         }
-         Ok(data)
+        Ok(data)
     } else {
         Err(WavGenError::NoHarmonics)
     }
