@@ -452,12 +452,12 @@ fn gen_harmonics(
             sampling_rate,
         );
         // Overlay the other harmonics
-        for harmonic_index in 1..harmonics_set.len() {
+        for harmonic_entry in harmonics_set.iter().skip(1) {
             let overlay_data = gen_sine_wave(
-                harmonics_set[harmonic_index].frequency as u32,
+                harmonic_entry.frequency as u32,
                 number_samples,
                 number_channels,
-                (harmonics_set[harmonic_index].amplitude * volume as f32) as u16,
+                (harmonic_entry.amplitude * volume as f32) as u16,
                 sampling_rate,
             );
 
