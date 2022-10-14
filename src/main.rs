@@ -109,10 +109,8 @@
 //! wav-gen help
 //! ```
 
-//  Wav format see http://soundfile.sapp.org/doc/WaveFormat/
+//  Wav format specification: see http://soundfile.sapp.org/doc/WaveFormat/
 
-//use core::num;
-use bunt;
 use num::integer::lcm;
 use std::error::Error;
 use std::f32::consts::PI;
@@ -430,7 +428,7 @@ fn gen_sweep_wave(
         }
 
         // Adjust the frequency for the next iteration
-        sweep_frequency = sweep_frequency + frequency_increment;
+        sweep_frequency += frequency_increment;
     }
 
     data
@@ -447,7 +445,7 @@ fn gen_harmonics(
     // Generate a initial set of data
     if let Some(h) = harmonics_set.first() {
         let mut data = gen_sine_wave(
-            h.frequency as u32,
+            h.frequency,
             number_samples,
             number_channels,
             (h.amplitude * volume as f32) as u16,
@@ -464,12 +462,12 @@ fn gen_harmonics(
             );
 
             for i in 0..data.len() {
-                data[i] = data[i] + overlay_data[i];
+                data[i] += overlay_data[i];
             }
         }
-        return Ok(data);
+         Ok(data)
     } else {
-        return Err(WavGenError::NoHarmonics);
+        Err(WavGenError::NoHarmonics)
     }
 }
 
@@ -517,7 +515,7 @@ fn normalise_harmonics(harmonics_set: &mut Vec<Harmonic>) {
     }
 
     for h in harmonics_set.iter_mut() {
-        h.amplitude = h.amplitude / sum;
+        h.amplitude /= sum;
     }
 }
 
