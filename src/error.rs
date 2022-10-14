@@ -1,6 +1,4 @@
-
 /// Error handling
-
 use std::fmt;
 use std::path::PathBuf;
 

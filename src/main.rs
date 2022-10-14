@@ -113,13 +113,12 @@
 
 //use core::num;
 use bunt;
+use num::integer::lcm;
 use std::error::Error;
 use std::f32::consts::PI;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use num::integer::lcm;
-
 
 use wav::Header;
 
@@ -281,7 +280,7 @@ fn main() -> Result<(), WavGenError> {
         GenCommands::Sine { frequency } => {
             let n_samples = match size {
                 GeneratedSize::Cyclic => sampling_rate * number_channels as u32 / frequency,
-                GeneratedSize::NumberSamples(number_samples) => number_samples
+                GeneratedSize::NumberSamples(number_samples) => number_samples,
             };
             gen_sine_wave(
                 *frequency,
@@ -303,15 +302,16 @@ fn main() -> Result<(), WavGenError> {
                 }
                 GeneratedSize::NumberSamples(n_samples) => n_samples,
             };
-           
+
             gen_sweep_wave(
-            *start,
-            *finish,
-            n_samples, 
-            number_channels,
-            cli.volume,
-            sampling_rate,
-        )},
+                *start,
+                *finish,
+                n_samples,
+                number_channels,
+                cli.volume,
+                sampling_rate,
+            )
+        }
 
         GenCommands::Harmonics { infile } => {
             let p = Path::new(infile);
@@ -323,7 +323,7 @@ fn main() -> Result<(), WavGenError> {
                 GeneratedSize::Cyclic => {
                     let frequencies = harmonics_set.iter().map(|h| h.frequency).collect();
                     sync_period(&frequencies, sampling_rate)
-                },
+                }
                 GeneratedSize::NumberSamples(n_samples) => n_samples,
             };
 
@@ -473,7 +473,6 @@ fn gen_harmonics(
     }
 }
 
-
 fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>, Box<dyn Error>> {
     //fn read_harmonics(harmonics_path: &Path) -> Result<Vec<Harmonic>,  HarmonicReadError> {
 
@@ -563,12 +562,15 @@ fn write_rust(
 /// all the sine wave start at zero (are sychronised) again.
 #[allow(dead_code)]
 fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
-    let scale: u32 = 20000;  // Used to scale up each period so that it remains an integer
-    let scaled_sample_periods: Vec<u32> = frequencies.iter().map(|f| sampling_rate * scale / f).collect();
+    let scale: u32 = 20000; // Used to scale up each period so that it remains an integer
+    let scaled_sample_periods: Vec<u32> = frequencies
+        .iter()
+        .map(|f| sampling_rate * scale / f)
+        .collect();
 
     let mut period: u32 = 1;
     for v in scaled_sample_periods.iter() {
-        period = lcm(period , *v);
+        period = lcm(period, *v);
     }
 
     period / scale
