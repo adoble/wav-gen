@@ -1,6 +1,6 @@
 # wav-gen
 
-![Build](https://github.com/adoble/wav-gen/actions/workflows/build.yml/badge.svg)
+![Build](https://github.com/adoble/wav-gen/actions/workflows/build.yml/badge.svg?event=push)
 
 A utility program to generate wave forms as either a `wav` file or a rust array initialisation.
 
