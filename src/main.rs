@@ -48,7 +48,7 @@
 //! ```
 //! ## Rust Data Arrays
 //!
-//! To generate a sine waveform of 500Hz as a rust data array of 44140 words use the following
+//! To generate a sine waveform of 500Hz as a rust data array of 44100 words use the following
 //!
 //! ```console
 //! wav-gen rust sine --frequency 500 --length 44100  ./wave.rs
@@ -66,7 +66,7 @@
 //! If the structure has been, for instance, generated in the file `wave.rs` then it can be imported with:
 //!
 //! ```
-//! use wave;
+//! mod wave;
 //! ```
 //!
 //!
@@ -78,7 +78,7 @@
 //!
 //! This works the same for the other wave types such as `sweep` and `harmonics`.
 //!
-//! A different name for the rust data structure can be specified:
+//! A different name for the rust data structure can be specified with `--name`:
 //! ```console
 //! wav-gen rust sweep --start 500 --finish 1500 --name SWEEP_DATA ./sweep.rs
 //! ```
@@ -199,11 +199,11 @@ enum GenCommands {
 
     /// Generate a sine wave that sweeps from one frequency to another over the duration
     Sweep {
-        /// The starting freqency in hertz
+        /// The starting frequency in hertz
         #[clap(short, long, value_parser, default_value = "100")]
         start: u32,
 
-        /// The finishing freqency in hertz
+        /// The finishing frequency in hertz
         #[clap(short, long, value_parser, default_value = "2000")]
         finish: u32,
     },
@@ -380,7 +380,7 @@ fn gen_sine_wave(
         let radians = (t as f32 * 2. * PI * frequency as f32) / sampling_rate as f32;
         let amplitude = (radians.sin() * volume as f32) as i16;
 
-        // Data consists  of left channnel followed by right channel sample. As we are generating stereo
+        // Data consists  of left channel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
         data.push(amplitude);
         if number_channels == 2 {
@@ -419,7 +419,7 @@ fn gen_sweep_wave(
         let r = (t as f32 * 2. * PI * sweep_frequency) / sampling_rate as f32;
         let amplitude = (r.sin() * volume as f32) as i16;
 
-        // Data consists  of left channnel followed by right channel sample. As we are generating stereo
+        // Data consists  of left channel followed by right channel sample. As we are generating stereo
         // with both left and right channel being the same, two identical samples are written each time.
         data.push(amplitude);
         if number_channels == 2 {
@@ -556,7 +556,7 @@ fn write_rust(
 }
 
 /// Finds the least common numerator of the periods in a set of sine waves, i.e the time (in number of samples) at which
-/// all the sine wave start at zero (are sychronised) again.
+/// all the sine wave start at zero (are synchronised) again.
 #[allow(clippy::ptr_arg)]
 fn sync_period(frequencies: &Vec<u32>, sampling_rate: u32) -> u32 {
     let scale: u32 = 20000; // Used to scale up each period so that it remains an integer

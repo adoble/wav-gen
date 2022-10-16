@@ -32,7 +32,7 @@ impl fmt::Display for WavGenError {
 }
 
 // Using the display implementation for the debug implementation means that
-// user friendly messages are shown when the main funtion exists with
+// user friendly messages are shown when the main function exists with
 // an error
 impl std::fmt::Debug for WavGenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
