@@ -228,7 +228,6 @@ enum GeneratedSize {
 }
 
 /// Represents an harmonic as a frequency and it's relative amplitude to other harmonics
-#[allow(dead_code)]
 #[derive(Debug)]
 struct Harmonic {
     frequency: u32, // In hertz
